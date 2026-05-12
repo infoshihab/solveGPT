@@ -1,0 +1,20 @@
+{
+  "name": "solvegpt",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "clean:web": "node -e \"const fs=require('fs'),p=require('path');const t=p.join('apps','web','.next');fs.rmSync(t,{recursive:true,force:true});console.log('Removed',t);\"",
+    "dev:clean": "npm run clean:web && npm run dev",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm run dev -w @solvegpt/web\" \"npm run dev -w @solvegpt/api\"",
+    "build": "npm run build -w @solvegpt/api && npm run build -w @solvegpt/web",
+    "db:push": "npm run db:push -w @solvegpt/api",
+    "setup": "npm install && npm run db:push",
+    "lint": "npm run lint -w @solvegpt/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
