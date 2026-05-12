@@ -16,6 +16,7 @@ import {
   streamOpenAICompatible,
   streamGemini,
   estimateCostUsd,
+  generateOpenAIImage,
   type ChatMsg,
 } from "../services/providers.js";
 import { logUsage, maybeResetMonthlyQuota } from "../services/usage.js";
@@ -68,6 +69,67 @@ async function isModelAllowed(provider: string, model: string): Promise<boolean>
 
 const router = Router();
 router.use(requireAuth);
+
+const imageBodySchema = z.object({
+  prompt: z.string().min(1).max(4000),
+  conversationId: z.string().uuid().optional(),
+});
+
+router.post("/generate-image", async (req, res) => {
+  const parsed = imageBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+  const auth = req.auth!;
+  const { prompt, conversationId } = parsed.data;
+
+  if (conversationId) {
+    const [existing] = await db
+      .select()
+      .from(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.userId, auth.userId)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+  }
+
+  const apiKey = await getProviderApiKey("openai");
+  if (!apiKey) {
+    res.status(503).json({
+      error: "OpenAI API key required for images. Set it in Admin → API keys or OPENAI_API_KEY.",
+    });
+    return;
+  }
+
+  try {
+    const url = await generateOpenAIImage(apiKey, prompt);
+    if (conversationId) {
+      await db.insert(messages).values([
+        {
+          conversationId,
+          role: "user",
+          content: `[Image] ${prompt}`,
+        },
+        {
+          conversationId,
+          role: "assistant",
+          content: `![Generated image](${url})`,
+        },
+      ]);
+      await db
+        .update(conversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversations.id, conversationId));
+    }
+    res.json({ url });
+  } catch (e) {
+    console.error("generate-image", e);
+    res.status(500).json({ error: e instanceof Error ? e.message : "Image generation failed" });
+  }
+});
 
 router.post("/stream", async (req, res) => {
   const parsed = bodySchema.safeParse(req.body);

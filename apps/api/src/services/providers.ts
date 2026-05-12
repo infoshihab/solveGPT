@@ -129,3 +129,17 @@ export async function* streamGemini(
   }
   yield { type: "usage", inputTokens, outputTokens };
 }
+
+/** DALL·E 3 — requires OpenAI API key (chat provider "openai"). */
+export async function generateOpenAIImage(apiKey: string, prompt: string): Promise<string> {
+  const client = new OpenAI({ apiKey });
+  const res = await client.images.generate({
+    model: "dall-e-3",
+    prompt: prompt.slice(0, 4000),
+    n: 1,
+    size: "1024x1024",
+  });
+  const url = res.data?.[0]?.url;
+  if (!url) throw new Error("OpenAI did not return an image URL");
+  return url;
+}

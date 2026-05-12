@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useSession } from "@/lib/session-context";
 import { UserMenu } from "@/components/UserMenu";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { MODELS, PROVIDERS, type ProviderId } from "@/lib/models";
 
@@ -19,17 +19,43 @@ type Overview = {
   allowlist: { provider: string; modelId: string; enabled: boolean }[];
 };
 
+function Card({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-surface-border bg-surface-raised/60 p-6 shadow-panel backdrop-blur-sm">
+      <h2 className="text-sm font-semibold tracking-tight text-white">{title}</h2>
+      {subtitle && <p className="mt-1 text-xs leading-relaxed text-zinc-500">{subtitle}</p>}
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
 export default function AdminPage() {
   const { user, loading } = useSession();
   const router = useRouter();
   const [data, setData] = useState<Overview | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
   const [keyForm, setKeyForm] = useState({ provider: "openai" as ProviderId, apiKey: "" });
   const [memberPatch, setMemberPatch] = useState<{
     userId: string;
     tokenQuotaMonthly: string;
     role: string;
   } | null>(null);
+
+  const [newUser, setNewUser] = useState({
+    email: "",
+    password: "",
+    role: "member" as "admin" | "member",
+    tokenQuotaMonthly: "1000000",
+  });
 
   const load = useCallback(async () => {
     const res = await apiFetch("/api/admin/overview");
@@ -61,6 +87,7 @@ export default function AdminPage() {
   }, [user, load]);
 
   const saveKey = async () => {
+    setOkMsg(null);
     const res = await apiFetch("/api/admin/keys", {
       method: "POST",
       body: JSON.stringify(keyForm),
@@ -70,11 +97,39 @@ export default function AdminPage() {
       return;
     }
     setKeyForm((k) => ({ ...k, apiKey: "" }));
+    setOkMsg("API key saved.");
+    void load();
+  };
+
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setOkMsg(null);
+    const res = await apiFetch("/api/admin/users", {
+      method: "POST",
+      body: JSON.stringify({
+        email: newUser.email.trim(),
+        password: newUser.password,
+        role: newUser.role,
+        tokenQuotaMonthly: Number(newUser.tokenQuotaMonthly) || 1_000_000,
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const e = (body as { error?: unknown }).error;
+      const msg =
+        typeof e === "string" ? e : e != null && typeof e === "object" ? "Invalid request" : "Could not create user.";
+      setErr(msg);
+      return;
+    }
+    setOkMsg(`User ${newUser.email.trim()} created. They can sign in now.`);
+    setNewUser({ email: "", password: "", role: "member", tokenQuotaMonthly: "1000000" });
     void load();
   };
 
   const saveMember = async () => {
     if (!memberPatch) return;
+    setOkMsg(null);
     const res = await apiFetch("/api/admin/members", {
       method: "PATCH",
       body: JSON.stringify({
@@ -88,6 +143,7 @@ export default function AdminPage() {
       return;
     }
     setMemberPatch(null);
+    setOkMsg("Member updated.");
     void load();
   };
 
@@ -101,45 +157,121 @@ export default function AdminPage() {
 
   if (loading || !user || user.role !== "admin") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-surface text-zinc-500">Loading…</div>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-accent" />
+        <p className="mt-4 text-sm text-zinc-500">Loading admin…</p>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface px-4 py-8 text-sm text-zinc-200">
+    <div className="min-h-screen bg-surface px-4 py-10 text-sm text-zinc-200">
       <div className="mx-auto max-w-5xl space-y-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-surface-border pb-8">
           <div className="flex flex-wrap items-center gap-4">
-            <Link href="/chat" className="shrink-0 py-1 hover:opacity-90">
+            <Link href="/chat" className="shrink-0 py-1 transition hover:opacity-90">
               <CompanyLogo heightClass="h-9" />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold text-white">Admin</h1>
-              <p className="text-zinc-500">Usage, quotas, provider keys, and model access.</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">Administration</h1>
+              <p className="mt-1 text-sm text-zinc-500">Users, usage, API keys, and model access.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/chat" className="text-accent hover:underline">
+            <Link
+              href="/chat"
+              className="rounded-xl border border-surface-border px-4 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            >
               Back to chat
             </Link>
             <UserMenu />
           </div>
         </header>
 
-        {err && <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-red-200">{err}</p>}
+        {err && (
+          <p className="rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">{err}</p>
+        )}
+        {okMsg && (
+          <p className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100">
+            {okMsg}
+          </p>
+        )}
 
         {data && (
-          <>
-            <section className="rounded-xl border border-surface-border bg-surface-raised p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Provider API keys</h2>
-              <p className="mb-3 text-xs text-zinc-500">
-                Keys are encrypted at rest. Team members never see raw secrets.
-              </p>
+          <div className="space-y-8">
+            <Card
+              title="Create user"
+              subtitle="Creates a new account with email and password. Share credentials securely with the teammate."
+            >
+              <form onSubmit={(e) => void createUser(e)} className="grid gap-4 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">Email</span>
+                  <input
+                    type="email"
+                    required
+                    value={newUser.email}
+                    onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
+                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+                    placeholder="colleague@company.com"
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                    Initial password
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    minLength={4}
+                    value={newUser.password}
+                    onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))}
+                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+                    placeholder="Min. 4 characters"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">Role</span>
+                  <select
+                    value={newUser.role}
+                    onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value as "admin" | "member" }))}
+                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none"
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                    Monthly token quota
+                  </span>
+                  <input
+                    type="number"
+                    min={1000}
+                    value={newUser.tokenQuotaMonthly}
+                    onChange={(e) => setNewUser((u) => ({ ...u, tokenQuotaMonthly: e.target.value }))}
+                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none"
+                  />
+                </label>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-500"
+                  >
+                    Create user
+                  </button>
+                </div>
+              </form>
+            </Card>
+
+            <Card
+              title="Provider API keys"
+              subtitle="Encrypted at rest. Members never see raw keys. Image generation uses the OpenAI key."
+            >
               <div className="flex flex-wrap gap-2">
                 <select
                   value={keyForm.provider}
                   onChange={(e) => setKeyForm((k) => ({ ...k, provider: e.target.value as ProviderId }))}
-                  className="rounded border border-surface-border bg-surface px-2 py-1"
+                  className="rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm"
                 >
                   {PROVIDERS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -149,46 +281,50 @@ export default function AdminPage() {
                 </select>
                 <input
                   type="password"
-                  placeholder="Paste provider API key"
+                  placeholder="Paste API key"
                   value={keyForm.apiKey}
                   onChange={(e) => setKeyForm((k) => ({ ...k, apiKey: e.target.value }))}
-                  className="min-w-[240px] flex-1 rounded border border-surface-border bg-surface px-2 py-1"
+                  className="min-w-[200px] flex-1 rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => void saveKey()}
-                  className="rounded bg-accent px-3 py-1 text-white hover:bg-blue-500"
+                  className="rounded-xl bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-white"
                 >
                   Save key
                 </button>
               </div>
-              <ul className="mt-3 space-y-1 text-xs text-zinc-500">
+              <ul className="mt-4 space-y-1 text-xs text-zinc-500">
                 {data.keys.map((k) => (
                   <li key={k.provider}>
-                    {k.provider}: {k.active ? "stored" : "inactive"}
+                    <span className="font-mono text-zinc-400">{k.provider}</span> — {k.active ? "stored" : "inactive"}
                   </li>
                 ))}
-                {data.keys.length === 0 && <li>No database keys yet — using server environment fallbacks if set.</li>}
+                {data.keys.length === 0 && (
+                  <li>None in database — environment variables used if set.</li>
+                )}
               </ul>
-            </section>
+            </Card>
 
-            <section className="rounded-xl border border-surface-border bg-surface-raised p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Model allowlist</h2>
-              <p className="mb-3 text-xs text-zinc-500">
-                When the list is empty, all default models are allowed. Add rows to restrict to specific models only.
-              </p>
-              <div className="grid gap-4 md:grid-cols-2">
+            <Card
+              title="Model allowlist"
+              subtitle="Empty list means all default models are allowed. Disable models to restrict access."
+            >
+              <div className="grid gap-6 md:grid-cols-2">
                 {(Object.keys(MODELS) as ProviderId[]).map((pid) => (
                   <div key={pid}>
-                    <p className="mb-2 text-xs font-medium text-zinc-400">{pid}</p>
-                    <ul className="space-y-1">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">{pid}</p>
+                    <ul className="space-y-1.5">
                       {MODELS[pid].map((m) => {
                         const row = data.allowlist.find((a) => a.provider === pid && a.modelId === m.id);
                         const allowed = !row || row.enabled;
                         return (
-                          <li key={m.id} className="flex items-center justify-between gap-2 text-xs">
-                            <span>{m.label}</span>
-                            <label className="flex items-center gap-1 text-zinc-500">
+                          <li
+                            key={m.id}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-surface-border/80 bg-surface/50 px-2 py-1.5 text-xs"
+                          >
+                            <span className="text-zinc-300">{m.label}</span>
+                            <label className="flex cursor-pointer items-center gap-2 text-zinc-500">
                               <input
                                 type="checkbox"
                                 checked={allowed}
@@ -203,54 +339,79 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-            </section>
+            </Card>
 
-            <section className="rounded-xl border border-surface-border bg-surface-raised p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Usage by provider</h2>
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-zinc-500">
-                    <th className="py-1">Provider</th>
-                    <th className="py-1">Tokens</th>
-                    <th className="py-1">Est. cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.summary.byProvider.map((r) => (
-                    <tr key={r.provider} className="border-t border-surface-border">
-                      <td className="py-2">{r.provider}</td>
-                      <td>{r.tokens}</td>
-                      <td>${r.cost.toFixed(4)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className="rounded-xl border border-surface-border bg-surface-raised p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Team members</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-xs">
+            <div className="grid gap-8 lg:grid-cols-2">
+              <Card title="Usage by provider">
+                <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="text-zinc-500">
-                      <th className="py-1">Email</th>
-                      <th className="py-1">Role</th>
-                      <th className="py-1">Quota / used</th>
-                      <th className="py-1"> </th>
+                      <th className="pb-2 font-medium">Provider</th>
+                      <th className="pb-2 font-medium">Tokens</th>
+                      <th className="pb-2 font-medium">Est. cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.summary.byProvider.map((r) => (
+                      <tr key={r.provider} className="border-t border-surface-border">
+                        <td className="py-2 font-mono text-zinc-300">{r.provider}</td>
+                        <td>{r.tokens}</td>
+                        <td>${r.cost.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+
+              <Card title="Usage by user">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-zinc-500">
+                      <th className="pb-2 font-medium">Email</th>
+                      <th className="pb-2 font-medium">Role</th>
+                      <th className="pb-2 font-medium">Tokens</th>
+                      <th className="pb-2 font-medium">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.summary.byUser.map((r) => (
+                      <tr key={r.id} className="border-t border-surface-border">
+                        <td className="max-w-[140px] truncate py-2 text-zinc-300" title={r.email}>
+                          {r.email}
+                        </td>
+                        <td>{r.role}</td>
+                        <td>{r.tokens}</td>
+                        <td>${r.cost.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+
+            <Card title="Team members" subtitle="Edit quotas and roles. Use Create user above to add accounts.">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left text-xs">
+                  <thead>
+                    <tr className="text-zinc-500">
+                      <th className="pb-2 font-medium">Email</th>
+                      <th className="pb-2 font-medium">Role</th>
+                      <th className="pb-2 font-medium">Used / quota</th>
+                      <th className="pb-2 font-medium"> </th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.members.map((m) => (
                       <tr key={m.id} className="border-t border-surface-border">
-                        <td className="py-2">{m.email}</td>
+                        <td className="py-2.5 font-mono text-[11px] text-zinc-300">{m.email}</td>
                         <td>{m.role}</td>
                         <td>
-                          {m.tokensUsedMonth} / {m.tokenQuotaMonthly}
+                          {m.tokensUsedMonth.toLocaleString()} / {m.tokenQuotaMonthly.toLocaleString()}
                         </td>
                         <td>
                           <button
                             type="button"
-                            className="text-accent hover:underline"
+                            className="font-medium text-accent hover:underline"
                             onClick={() =>
                               setMemberPatch({
                                 userId: m.id,
@@ -268,12 +429,12 @@ export default function AdminPage() {
                 </table>
               </div>
               {memberPatch && (
-                <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-surface-border pt-4">
+                <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-surface-border pt-6">
                   <label className="text-xs text-zinc-500">
-                    Monthly token quota
+                    Monthly quota
                     <input
                       type="number"
-                      className="ml-1 rounded border border-surface-border bg-surface px-2 py-1"
+                      className="ml-2 rounded-lg border border-surface-border bg-surface px-2 py-1.5"
                       value={memberPatch.tokenQuotaMonthly}
                       onChange={(e) =>
                         setMemberPatch((p) => (p ? { ...p, tokenQuotaMonthly: e.target.value } : p))
@@ -283,7 +444,7 @@ export default function AdminPage() {
                   <label className="text-xs text-zinc-500">
                     Role
                     <select
-                      className="ml-1 rounded border border-surface-border bg-surface px-2 py-1"
+                      className="ml-2 rounded-lg border border-surface-border bg-surface px-2 py-1.5"
                       value={memberPatch.role}
                       onChange={(e) =>
                         setMemberPatch((p) => (p ? { ...p, role: e.target.value } : p))
@@ -296,41 +457,21 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => void saveMember()}
-                    className="rounded bg-accent px-3 py-1 text-white hover:bg-blue-500"
+                    className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
                   >
-                    Save member
+                    Save changes
                   </button>
-                  <button type="button" onClick={() => setMemberPatch(null)} className="text-zinc-500 hover:text-white">
+                  <button
+                    type="button"
+                    onClick={() => setMemberPatch(null)}
+                    className="text-xs text-zinc-500 hover:text-white"
+                  >
                     Cancel
                   </button>
                 </div>
               )}
-            </section>
-
-            <section className="rounded-xl border border-surface-border bg-surface-raised p-4">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">Usage by user</h2>
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-zinc-500">
-                    <th className="py-1">Email</th>
-                    <th className="py-1">Role</th>
-                    <th className="py-1">Tokens</th>
-                    <th className="py-1">Est. cost</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.summary.byUser.map((r) => (
-                    <tr key={r.id} className="border-t border-surface-border">
-                      <td className="py-2">{r.email}</td>
-                      <td>{r.role}</td>
-                      <td>{r.tokens}</td>
-                      <td>${r.cost.toFixed(4)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </>
+            </Card>
+          </div>
         )}
       </div>
     </div>

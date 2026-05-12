@@ -23,6 +23,10 @@ Each web dev start clears `apps/web/.next` first so Turbopack/webpack cache mix-
 
 The API runs `db:push` before starting in dev so tables stay in sync. Default users are created when `users` is empty (see `apps/api/src/services/seed.ts`).
 
+**Images:** use **Create image (DALL·E)** in the chat composer; it needs an **OpenAI** API key (Admin → API keys or `OPENAI_API_KEY`). Chat models only return text unless you use this button (DALL·E 3).
+
+**Users:** admins can add accounts under **Admin → Create user**.
+
 ## If the web app breaks after an upgrade
 
 ```bash

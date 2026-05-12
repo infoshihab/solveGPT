@@ -17,6 +17,7 @@ type State = {
   appendAssistantChunk: (t: string) => void;
   finalizeAssistant: () => void;
   addUserMessage: (content: string) => void;
+  addAssistantMessage: (content: string) => void;
   setStreaming: (v: boolean) => void;
   resetChat: () => void;
 };
@@ -51,6 +52,8 @@ export const useChatStore = create<State>((set, get) => ({
   finalizeAssistant: () => {},
   addUserMessage: (content) =>
     set((s) => ({ messages: [...s.messages, { role: "user", content }] })),
+  addAssistantMessage: (content) =>
+    set((s) => ({ messages: [...s.messages, { role: "assistant", content }] })),
   setStreaming: (streaming) => set({ streaming }),
   resetChat: () =>
     set({

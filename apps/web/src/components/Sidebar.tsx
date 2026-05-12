@@ -55,21 +55,21 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex w-full shrink-0 flex-col border-r border-surface-border bg-surface-raised md:w-72">
-      <div className="flex flex-col gap-2 border-b border-surface-border p-3">
-        <Link href="/" className="shrink-0 py-0.5 hover:opacity-90" title="Home">
+    <aside className="flex w-full shrink-0 flex-col border-r border-surface-border bg-surface-raised/40 md:w-72">
+      <div className="border-b border-surface-border p-4">
+        <Link href="/" className="inline-block py-0.5 opacity-90 transition hover:opacity-100" title="Home">
           <CompanyLogo heightClass="h-7" />
         </Link>
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">History</span>
+        <p className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Conversations</p>
       </div>
-      <div className="p-3">
+      <div className="border-b border-surface-border p-3">
         <button
           type="button"
           onClick={() => {
             resetChat();
             void load();
           }}
-          className="w-full rounded-lg bg-accent py-2 text-sm font-medium text-white hover:bg-blue-500"
+          className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/20 transition hover:bg-blue-500"
         >
           New chat
         </button>
@@ -77,33 +77,36 @@ export function Sidebar() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && void load()}
-          placeholder="Search titles…"
-          className="mt-2 w-full rounded-md border border-surface-border bg-surface px-2 py-1.5 text-sm outline-none ring-accent focus:ring-1"
+          placeholder="Search…"
+          className="mt-2 w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200 outline-none ring-1 ring-transparent transition placeholder:text-zinc-600 focus:border-accent/30 focus:ring-accent/20"
         />
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
+      <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2 pb-6">
         {items.map((c) => (
           <button
             key={c.id}
             type="button"
             onClick={() => void openConversation(c.id)}
-            className={`mb-1 w-full rounded-md px-2 py-2 text-left text-sm ${
-              c.id === conversationId ? "bg-surface text-white" : "text-zinc-400 hover:bg-surface"
+            className={`mb-1 w-full rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+              c.id === conversationId
+                ? "border-accent/40 bg-accent/10 text-white shadow-sm"
+                : "border-transparent text-zinc-400 hover:border-surface-border hover:bg-surface-hover hover:text-zinc-200"
             }`}
           >
-            <div className="line-clamp-2 font-medium">{c.title}</div>
-            <div className="mt-0.5 text-[10px] uppercase text-zinc-600">
+            <div className="line-clamp-2 font-medium leading-snug">{c.title}</div>
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-zinc-600">
               {c.provider} · {c.model}
             </div>
           </button>
         ))}
-        {items.length === 0 && (
-          <p className="px-2 text-sm text-zinc-600">No conversations yet. Start below.</p>
-        )}
+        {items.length === 0 && <p className="px-2 py-6 text-center text-sm text-zinc-600">No history yet.</p>}
       </nav>
-      <div className="border-t border-surface-border p-3 text-xs text-zinc-600">
-        <Link href="/" className="text-accent hover:underline">
-          Home
+      <div className="mt-auto border-t border-surface-border p-3">
+        <Link
+          href="/"
+          className="text-xs font-medium text-zinc-500 transition hover:text-accent"
+        >
+          ← Home
         </Link>
       </div>
     </aside>

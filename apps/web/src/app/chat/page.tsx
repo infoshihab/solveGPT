@@ -19,25 +19,34 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface text-zinc-500">Loading…</div>
+      <div className="flex h-screen flex-col items-center justify-center bg-surface">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-accent" />
+        <p className="mt-4 text-sm text-zinc-500">Loading workspace…</p>
+      </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface text-zinc-500">Redirecting…</div>
+      <div className="flex h-screen items-center justify-center bg-surface text-sm text-zinc-500">Redirecting…</div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-surface">
-      <header className="flex shrink-0 items-center justify-between border-b border-surface-border px-4 py-2">
-        <Link href="/" className="flex shrink-0 items-center gap-2 py-1 hover:opacity-90">
+    <div className="flex h-screen flex-col bg-surface text-zinc-100">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-surface-border bg-surface-raised/60 px-4 py-3 backdrop-blur-sm">
+        <Link href="/" className="flex shrink-0 items-center gap-3 py-0.5 transition hover:opacity-90">
           <CompanyLogo heightClass="h-8" />
+          <div className="hidden border-l border-surface-border pl-3 sm:block">
+            <span className="text-xs font-medium text-zinc-400">Workspace</span>
+          </div>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-5">
           {user.role === "admin" && (
-            <Link href="/admin" className="text-sm text-accent hover:underline">
+            <Link
+              href="/admin"
+              className="rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+            >
               Admin
             </Link>
           )}
