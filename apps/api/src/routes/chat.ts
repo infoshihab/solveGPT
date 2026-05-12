@@ -17,9 +17,17 @@ import {
   streamGemini,
   estimateCostUsd,
   generateOpenAIImage,
+  mergeUserContentForDb,
+  prepareMessagesForStream,
   type ChatMsg,
 } from "../services/providers.js";
 import { logUsage, maybeResetMonthlyQuota } from "../services/usage.js";
+
+const attachmentSchema = z.object({
+  name: z.string().min(1).max(200),
+  mime: z.string().min(1).max(120),
+  dataUrl: z.string().min(20).max(12_000_000),
+});
 
 const bodySchema = z.object({
   conversationId: z.string().uuid().optional(),
@@ -31,6 +39,7 @@ const bodySchema = z.object({
       content: z.string(),
     })
   ),
+  attachments: z.array(attachmentSchema).max(8).optional(),
 });
 
 async function getProviderApiKey(provider: string): Promise<string | null> {
@@ -137,7 +146,7 @@ router.post("/stream", async (req, res) => {
     res.status(400).json({ error: parsed.error.flatten() });
     return;
   }
-  const { conversationId, provider, model, messages: chatMessages } = parsed.data;
+  const { conversationId, provider, model, messages: chatMessages, attachments } = parsed.data;
   const auth = req.auth!;
 
   await maybeResetMonthlyQuota(auth.userId);
@@ -165,8 +174,10 @@ router.post("/stream", async (req, res) => {
 
   let convId = conversationId;
   if (!convId) {
-    const title =
-      chatMessages.find((m) => m.role === "user")?.content?.slice(0, 80) ?? "New chat";
+    const titleSrc =
+      chatMessages.find((m) => m.role === "user")?.content?.trim() ||
+      (attachments?.length ? "Image message" : "New chat");
+    const title = titleSrc.slice(0, 80);
     const [c] = await db
       .insert(conversations)
       .values({
@@ -191,10 +202,11 @@ router.post("/stream", async (req, res) => {
 
   const lastUser = [...chatMessages].reverse().find((m) => m.role === "user");
   if (lastUser) {
+    const contentForDb = mergeUserContentForDb(lastUser.content, attachments);
     await db.insert(messages).values({
       conversationId: convId,
       role: "user",
-      content: lastUser.content,
+      content: contentForDb,
     });
   }
 
@@ -214,7 +226,7 @@ router.post("/stream", async (req, res) => {
   let outputT = 0;
 
   try {
-    const msgs = chatMessages as ChatMsg[];
+    const msgs = prepareMessagesForStream(chatMessages, attachments, provider, model);
     let gen: AsyncGenerator<{ type: "text"; text: string } | { type: "usage"; inputTokens: number; outputTokens: number }>;
 
     if (provider === "anthropic") {

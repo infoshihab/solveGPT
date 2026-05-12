@@ -3,9 +3,59 @@
 import { useCallback, useMemo, useState } from "react";
 import { MODELS, PROVIDERS, type ProviderId } from "@/lib/models";
 import { apiFetch, getStoredToken, streamChat } from "@/lib/api";
-import { useChatStore } from "@/store/chatStore";
+import { useChatStore, type ChatMessage } from "@/store/chatStore";
 import { TemplatesPanel } from "@/components/TemplatesPanel";
 import { MarkdownMessage } from "@/components/MarkdownMessage";
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <span className="font-medium text-zinc-400">Assistant is typing</span>
+      <span className="flex gap-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="h-1.5 w-1.5 rounded-full bg-zinc-400"
+            style={{
+              animation: "typing-dot 1.2s ease-in-out infinite",
+              animationDelay: `${i * 0.15}s`,
+            }}
+          />
+        ))}
+      </span>
+    </div>
+  );
+}
+
+function UserBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div className="max-w-[min(760px,94%)] rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-600/20 to-indigo-950/30 px-4 py-3 shadow-sm">
+      <div className="mb-2 border-b border-white/10 pb-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-200/80">You</span>
+      </div>
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {message.attachments.map((a) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={a.id}
+              src={a.dataUrl}
+              alt={a.name}
+              className="max-h-44 max-w-full rounded-xl border border-white/10 object-cover shadow-md"
+            />
+          ))}
+        </div>
+      )}
+      {message.content.trim() ? (
+        <div className="text-sm leading-relaxed text-zinc-100">
+          <MarkdownMessage content={message.content} />
+        </div>
+      ) : message.attachments?.length ? (
+        <p className="text-xs italic text-zinc-400">Attachment only</p>
+      ) : null}
+    </div>
+  );
+}
 
 export function ChatMain() {
   const {
@@ -14,6 +64,7 @@ export function ChatMain() {
     model,
     conversationId,
     streaming,
+    pendingAttachments,
     setProvider,
     setModel,
     setConversationId,
@@ -22,6 +73,9 @@ export function ChatMain() {
     addAssistantMessage,
     appendAssistantChunk,
     setStreaming,
+    addPendingAttachment,
+    removePendingAttachment,
+    clearPendingAttachments,
   } = useChatStore();
 
   const [input, setInput] = useState("");
@@ -50,18 +104,20 @@ export function ChatMain() {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || streaming || imageBusy) return;
+    const snap = [...useChatStore.getState().pendingAttachments];
+    if ((!text && !snap.length) || streaming || imageBusy) return;
     setInput("");
+    clearPendingAttachments();
     setError(null);
     setUsage(null);
-    addUserMessage(text);
+    addUserMessage(text, snap.length ? snap : undefined);
     setStreaming(true);
     if (!getStoredToken()) {
       setError("Not signed in");
       setStreaming(false);
       return;
     }
-    const payloadMessages = [...useChatStore.getState().messages];
+    const payloadMessages = useChatStore.getState().messages.map(({ role, content }) => ({ role, content }));
     try {
       await streamChat(
         {
@@ -69,6 +125,9 @@ export function ChatMain() {
           provider,
           model,
           messages: payloadMessages,
+          attachments: snap.length
+            ? snap.map(({ name, mime, dataUrl }) => ({ name, mime, dataUrl }))
+            : undefined,
         },
         (ev) => {
           if (ev.type === "meta") {
@@ -131,15 +190,27 @@ export function ChatMain() {
     }
   };
 
-  const attachFile = useCallback((file: File | null) => {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = String(reader.result ?? "");
-      setInput((prev) => `${prev ? `${prev}\n\n` : ""}![upload](${url})`);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  const attachFile = useCallback(
+    (file: File | null) => {
+      if (!file || !file.type.startsWith("image/")) return;
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Each image must be under 10 MB.");
+        return;
+      }
+      setError(null);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result ?? "");
+        const id =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random()}`;
+        addPendingAttachment({ id, name: file.name || "image", mime: file.type, dataUrl });
+      };
+      reader.readAsDataURL(file);
+    },
+    [addPendingAttachment]
+  );
 
   const exportConversation = async () => {
     if (!conversationId) return;
@@ -156,6 +227,8 @@ export function ChatMain() {
   };
 
   const busy = streaming || imageBusy;
+  const last = messages[messages.length - 1];
+  const showTyping = streaming && last?.role === "user";
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-surface">
@@ -213,35 +286,52 @@ export function ChatMain() {
           <div className="mx-auto max-w-lg rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 px-6 py-10 text-center">
             <p className="text-sm font-medium text-zinc-300">Start a conversation</p>
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              Pick a provider and model, type your question, or describe an image and use{" "}
-              <strong className="text-zinc-400">Create image</strong> (uses OpenAI DALL·E 3 — requires an OpenAI key in
-              Admin).
+              Type a message, attach images with <strong className="text-zinc-400">Attach</strong> (shown as
+              thumbnails — not dumped into the box). For generated art, use{" "}
+              <strong className="text-zinc-400">Create image</strong> (OpenAI DALL·E 3).
             </p>
           </div>
         )}
         {messages.map((m, i) => (
           <div
-            key={`${i}-${m.role}`}
+            key={`msg-${i}`}
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
-            <div
-              className={`max-w-[min(760px,94%)] rounded-2xl border px-4 py-3 shadow-sm ${
-                m.role === "user"
-                  ? "border-blue-500/25 bg-gradient-to-br from-blue-600/25 to-indigo-900/20 text-zinc-100"
-                  : m.role === "system"
+            {m.role === "user" ? (
+              <UserBubble message={m} />
+            ) : (
+              <div
+                className={`max-w-[min(760px,94%)] rounded-2xl border px-4 py-3 shadow-sm ${
+                  m.role === "system"
                     ? "border-amber-500/30 bg-amber-500/5 text-amber-100"
                     : "border-surface-border bg-surface-raised text-zinc-100"
-              }`}
-            >
-              <div className="mb-2 flex items-center gap-2 border-b border-white/5 pb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  {m.role === "user" ? "You" : m.role === "assistant" ? "Assistant" : m.role}
-                </span>
+                }`}
+              >
+                <div className="mb-2 flex items-center gap-2 border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                    {m.role === "assistant" ? "Assistant" : m.role}
+                  </span>
+                </div>
+                <div className="inline-block max-w-full">
+                  <MarkdownMessage content={m.content} />
+                  {streaming && i === messages.length - 1 && m.role === "assistant" && (
+                    <span
+                      className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-sm bg-accent align-text-bottom"
+                      aria-hidden
+                    />
+                  )}
+                </div>
               </div>
-              <MarkdownMessage content={m.content} />
-            </div>
+            )}
           </div>
         ))}
+        {showTyping && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 shadow-sm">
+              <TypingIndicator />
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -250,9 +340,31 @@ export function ChatMain() {
 
       <footer className="border-t border-surface-border bg-surface-raised/30 p-4">
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
+          {pendingAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {pendingAttachments.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-2 rounded-xl border border-surface-border bg-surface px-2 py-1 pr-1"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.dataUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  <span className="max-w-[120px] truncate text-xs text-zinc-400">{a.name}</span>
+                  <button
+                    type="button"
+                    className="rounded-lg p-1 text-zinc-500 hover:bg-red-500/20 hover:text-red-300"
+                    onClick={() => removePendingAttachment(a.id)}
+                    aria-label="Remove attachment"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <label className="cursor-pointer rounded-lg border border-surface-border bg-surface px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200">
-              Attach file
+              Attach image
               <input
                 type="file"
                 accept="image/*"
@@ -269,7 +381,9 @@ export function ChatMain() {
             >
               {imageBusy ? "Creating image…" : "Create image (DALL·E)"}
             </button>
-            <span className="text-[11px] text-zinc-600">Code & markdown render below. Images need the button or an OpenAI key.</span>
+            <span className="text-[11px] text-zinc-600">
+              OpenAI <span className="text-zinc-500">gpt-4o</span> uses vision on attachments.
+            </span>
           </div>
           <div className="flex gap-3">
             <textarea
@@ -282,14 +396,14 @@ export function ChatMain() {
                 }
               }}
               rows={3}
-              placeholder="Write a message… (Shift+Enter for new line). For code, the assistant will use fenced blocks."
+              placeholder="Message… Shift+Enter for newline. Attach files above — they stay out of this box."
               className="min-h-[96px] flex-1 resize-none rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 shadow-inner outline-none ring-1 ring-transparent transition focus:border-accent/50 focus:ring-accent/30"
               disabled={streaming}
             />
             <button
               type="button"
               onClick={() => void send()}
-              disabled={streaming || !input.trim()}
+              disabled={streaming || (!input.trim() && !pendingAttachments.length)}
               className="self-end shrink-0 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/20 transition hover:bg-blue-500 disabled:opacity-40"
             >
               {streaming ? "Sending…" : "Send"}

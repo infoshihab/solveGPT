@@ -58,7 +58,7 @@ export default function HomePage() {
 
         <form
           onSubmit={(e) => void submit(e)}
-          className="rounded-2xl border border-surface-border bg-surface-raised/80 p-8 shadow-panel backdrop-blur-sm"
+          className="rounded-2xl border border-white/[0.06] bg-zinc-900/40 p-8 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.65)] ring-1 ring-white/[0.04] backdrop-blur-xl"
         >
           {bootError && (
             <div className="mb-6 space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-100">

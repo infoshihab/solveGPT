@@ -9,6 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import { apiFetch, setStoredToken } from "@/lib/api";
+import { useChatStore } from "@/store/chatStore";
+
+const WORKSPACE_UID_KEY = "solvegpt_workspace_uid";
 
 export type SessionUser = {
   id: string;
@@ -73,6 +76,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (loading) return;
+    if (typeof window === "undefined") return;
+    const id = user?.id ?? "";
+    const prev = sessionStorage.getItem(WORKSPACE_UID_KEY) ?? "";
+    if (id && prev && id !== prev) {
+      useChatStore.getState().resetChat();
+      sessionStorage.setItem(WORKSPACE_UID_KEY, id);
+    } else if (id && !prev) {
+      sessionStorage.setItem(WORKSPACE_UID_KEY, id);
+    } else if (!id && prev) {
+      useChatStore.getState().resetChat();
+      sessionStorage.removeItem(WORKSPACE_UID_KEY);
+    }
+  }, [loading, user?.id]);
+
   const login = async (email: string, password: string) => {
     const r = await apiFetch("/api/auth/login", {
       method: "POST",
@@ -93,6 +112,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStoredToken(null);
     setUser(null);
     setBootError(null);
+    useChatStore.getState().resetChat();
+    if (typeof window !== "undefined") sessionStorage.removeItem(WORKSPACE_UID_KEY);
     void apiFetch("/api/auth/logout", { method: "POST" });
   };
 

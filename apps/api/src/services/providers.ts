@@ -2,8 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
 
-export type ChatMsg = { role: "user" | "assistant" | "system"; content: string };
+export type IncomingAttachment = { name: string; mime: string; dataUrl: string };
+
+export type ChatMsg = {
+  role: "user" | "assistant" | "system";
+  content: string | ChatCompletionContentPart[];
+};
 
 export type StreamChunk =
   | { type: "text"; text: string }
@@ -24,18 +30,72 @@ export function estimateCostUsd(model: string, input: number, output: number): n
   return (input * p.in + output * p.out) / 1_000_000;
 }
 
+export function flattenMsgContent(content: string | ChatCompletionContentPart[]): string {
+  if (typeof content === "string") return content;
+  const bits: string[] = [];
+  for (const p of content) {
+    if (p.type === "text") bits.push(p.text);
+    if (p.type === "image_url" && p.image_url?.url) bits.push(`![image](${p.image_url.url})`);
+  }
+  return bits.join("\n\n");
+}
+
+export function mergeUserContentForDb(text: string, files?: IncomingAttachment[]): string {
+  if (!files?.length) return text;
+  const esc = (n: string) => n.replace(/]/g, "");
+  const imgs = files.map((f) => `![${esc(f.name)}](${f.dataUrl})`).join("\n\n");
+  const t = text.trim();
+  return t ? `${t}\n\n${imgs}` : imgs;
+}
+
+function openAiSupportsVision(model: string): boolean {
+  const m = model.toLowerCase();
+  if (m.startsWith("gpt-3.5")) return false;
+  return m.includes("gpt-4") || m.includes("gpt-5") || m.includes("chatgpt") || m.includes("o4");
+}
+
+function openAiImageParts(text: string, files: IncomingAttachment[]): ChatCompletionContentPart[] {
+  const parts: ChatCompletionContentPart[] = [
+    { type: "text", text: text.trim() || "Please describe these images." },
+  ];
+  for (const f of files) {
+    parts.push({ type: "image_url", image_url: { url: f.dataUrl } });
+  }
+  return parts;
+}
+
+/** Merges optional file attachments into the last user message for the model stream. */
+export function prepareMessagesForStream(
+  messagesIn: { role: "user" | "assistant" | "system"; content: string }[],
+  attachments: IncomingAttachment[] | undefined,
+  provider: string,
+  model: string
+): ChatMsg[] {
+  const out: ChatMsg[] = messagesIn.map((m) => ({ role: m.role, content: m.content }));
+  if (!attachments?.length) return out;
+  const userIdx = [...out.keys()].filter((i) => out[i]!.role === "user").pop();
+  if (userIdx === undefined) return out;
+  const text = out[userIdx]!.content as string;
+  if (provider === "openai" && openAiSupportsVision(model)) {
+    out[userIdx] = { role: "user", content: openAiImageParts(text, attachments) };
+  } else {
+    out[userIdx] = { role: "user", content: mergeUserContentForDb(text, attachments) };
+  }
+  return out;
+}
+
 export async function* streamAnthropic(
   apiKey: string,
   model: string,
   messages: ChatMsg[]
 ): AsyncGenerator<StreamChunk> {
   const client = new Anthropic({ apiKey });
-  const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n");
+  const system = messages.filter((m) => m.role === "system").map((m) => flattenMsgContent(m.content)).join("\n");
   const msgs: MessageParam[] = messages
     .filter((m) => m.role !== "system")
     .map((m) => ({
       role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content,
+      content: flattenMsgContent(m.content),
     }));
 
   const stream = client.messages.stream({
@@ -75,10 +135,13 @@ export async function* streamOpenAICompatible(
   const client = new OpenAI({ apiKey, baseURL });
   const stream = await client.chat.completions.create({
     model,
-    messages: messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
+    messages: messages.map(
+      (m) =>
+        ({
+          role: m.role,
+          content: m.content,
+        }) as OpenAI.Chat.Completions.ChatCompletionMessageParam
+    ),
     stream: true,
     stream_options: { include_usage: true },
   });
@@ -88,7 +151,7 @@ export async function* streamOpenAICompatible(
 
   for await (const part of stream) {
     const ch = part.choices[0]?.delta?.content;
-    if (ch) yield { type: "text", text: ch };
+    if (typeof ch === "string" && ch) yield { type: "text", text: ch };
     if (part.usage) {
       inputTokens = part.usage.prompt_tokens ?? inputTokens;
       outputTokens = part.usage.completion_tokens ?? outputTokens;
@@ -106,14 +169,14 @@ export async function* streamGemini(
   const m = genAI.getGenerativeModel({ model });
   const history = messages.slice(0, -1).map((msg) => ({
     role: msg.role === "assistant" ? "model" : "user",
-    parts: [{ text: msg.content }],
+    parts: [{ text: flattenMsgContent(msg.content) }],
   }));
   const last = messages[messages.length - 1];
   if (!last || last.role !== "user") {
     throw new Error("Last message must be user for Gemini");
   }
   const chat = m.startChat({ history: history as never });
-  const result = await chat.sendMessageStream(last.content);
+  const result = await chat.sendMessageStream(flattenMsgContent(last.content));
 
   let inputTokens = 0;
   let outputTokens = 0;

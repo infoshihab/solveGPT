@@ -2,13 +2,20 @@ import { create } from "zustand";
 import type { ProviderId } from "@/lib/models";
 import { MODELS } from "@/lib/models";
 
-export type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
+export type FileAttachment = { id: string; name: string; mime: string; dataUrl: string };
+
+export type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+  attachments?: FileAttachment[];
+};
 
 type State = {
   conversationId: string | null;
   provider: ProviderId;
   model: string;
   messages: ChatMessage[];
+  pendingAttachments: FileAttachment[];
   streaming: boolean;
   setProvider: (p: ProviderId) => void;
   setModel: (m: string) => void;
@@ -16,8 +23,11 @@ type State = {
   setMessages: (m: ChatMessage[]) => void;
   appendAssistantChunk: (t: string) => void;
   finalizeAssistant: () => void;
-  addUserMessage: (content: string) => void;
+  addUserMessage: (content: string, attachments?: FileAttachment[]) => void;
   addAssistantMessage: (content: string) => void;
+  addPendingAttachment: (a: FileAttachment) => void;
+  removePendingAttachment: (id: string) => void;
+  clearPendingAttachments: () => void;
   setStreaming: (v: boolean) => void;
   resetChat: () => void;
 };
@@ -30,6 +40,7 @@ export const useChatStore = create<State>((set, get) => ({
   provider: defaultProvider,
   model: defaultModel,
   messages: [],
+  pendingAttachments: [],
   streaming: false,
   setProvider: (p) =>
     set({
@@ -50,15 +61,30 @@ export const useChatStore = create<State>((set, get) => ({
     set({ messages: msgs });
   },
   finalizeAssistant: () => {},
-  addUserMessage: (content) =>
-    set((s) => ({ messages: [...s.messages, { role: "user", content }] })),
+  addUserMessage: (content, attachments) =>
+    set((s) => ({
+      messages: [
+        ...s.messages,
+        {
+          role: "user",
+          content,
+          attachments: attachments?.length ? attachments : undefined,
+        },
+      ],
+    })),
   addAssistantMessage: (content) =>
     set((s) => ({ messages: [...s.messages, { role: "assistant", content }] })),
+  addPendingAttachment: (a) =>
+    set((s) => ({ pendingAttachments: [...s.pendingAttachments, a] })),
+  removePendingAttachment: (id) =>
+    set((s) => ({ pendingAttachments: s.pendingAttachments.filter((x) => x.id !== id) })),
+  clearPendingAttachments: () => set({ pendingAttachments: [] }),
   setStreaming: (streaming) => set({ streaming }),
   resetChat: () =>
     set({
       conversationId: null,
       messages: [],
+      pendingAttachments: [],
       provider: defaultProvider,
       model: MODELS[defaultProvider][0]!.id,
     }),
