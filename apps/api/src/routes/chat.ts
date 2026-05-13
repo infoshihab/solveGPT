@@ -22,6 +22,12 @@ import {
   type ChatMsg,
 } from "../services/providers.js";
 import { logUsage, maybeResetMonthlyQuota } from "../services/usage.js";
+import {
+  detectStreamIntent,
+  extractImagePrompt,
+  buildDallePrompt,
+  classifyIntentWithOpenAI,
+} from "../services/openaiImageIntent.js";
 
 const attachmentSchema = z.object({
   name: z.string().min(1).max(200),
@@ -79,6 +85,15 @@ async function isModelAllowed(provider: string, model: string): Promise<boolean>
 const router = Router();
 router.use(requireAuth);
 
+/** CommonMark-safe image URL inside `![](...)` (parens in URL break markdown). */
+function wrapMarkdownImageUrlForStorage(url: string): string {
+  const t = url.trim();
+  if (!t) return t;
+  if (t.startsWith("<") && t.endsWith(">")) return t;
+  if (/[\s()]/.test(t)) return `<${t}>`;
+  return t;
+}
+
 const imageBodySchema = z.object({
   prompt: z.string().min(1).max(4000),
   conversationId: z.string().uuid().optional(),
@@ -114,7 +129,7 @@ router.post("/generate-image", async (req, res) => {
   }
 
   try {
-    const url = await generateOpenAIImage(apiKey, prompt);
+    const { dataUrlOrHttp, model: imageModelUsed } = await generateOpenAIImage(apiKey, prompt);
     if (conversationId) {
       await db.insert(messages).values([
         {
@@ -125,7 +140,7 @@ router.post("/generate-image", async (req, res) => {
         {
           conversationId,
           role: "assistant",
-          content: `![Generated image](${url})`,
+          content: `![Generated image](${wrapMarkdownImageUrlForStorage(dataUrlOrHttp)})`,
         },
       ]);
       await db
@@ -133,7 +148,7 @@ router.post("/generate-image", async (req, res) => {
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, conversationId));
     }
-    res.json({ url });
+    res.json({ type: "image", data: dataUrlOrHttp, model: imageModelUsed });
   } catch (e) {
     console.error("generate-image", e);
     res.status(500).json({ error: e instanceof Error ? e.message : "Image generation failed" });
@@ -226,6 +241,50 @@ router.post("/stream", async (req, res) => {
   let outputT = 0;
 
   try {
+    const lastPlain = lastUser?.content?.trim() ?? "";
+    let streamIntent = detectStreamIntent(lastPlain);
+    if (provider === "openai" && lastPlain && process.env.OPENAI_ROUTE_IMAGE_LLM === "1") {
+      try {
+        streamIntent = await classifyIntentWithOpenAI(apiKey, lastPlain);
+      } catch {
+        /* keep rule-based intent */
+      }
+    }
+    if (
+      provider === "openai" &&
+      !attachments?.length &&
+      lastPlain &&
+      streamIntent === "image"
+    ) {
+      const extracted = extractImagePrompt(lastPlain);
+      const prompt = buildDallePrompt(extracted, lastPlain);
+      const { dataUrlOrHttp, model: imageModelUsed } = await generateOpenAIImage(apiKey, prompt);
+      send({ type: "result", kind: "image", data: dataUrlOrHttp });
+      full = `![Generated image](${wrapMarkdownImageUrlForStorage(dataUrlOrHttp)})`;
+      const imageCostUsd = 0.04;
+      const imageTokenProxy = 4000;
+      await logUsage(auth.userId, "openai", imageModelUsed, imageTokenProxy, 0, imageCostUsd);
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "assistant",
+        content: full,
+      });
+      await db
+        .update(conversations)
+        .set({ updatedAt: new Date(), provider, model })
+        .where(eq(conversations.id, convId));
+      send({
+        type: "done",
+        usage: {
+          inputTokens: imageTokenProxy,
+          outputTokens: 0,
+          costUsd: imageCostUsd,
+        },
+      });
+      res.end();
+      return;
+    }
+
     const msgs = prepareMessagesForStream(chatMessages, attachments, provider, model);
     let gen: AsyncGenerator<{ type: "text"; text: string } | { type: "usage"; inputTokens: number; outputTokens: number }>;
 
@@ -267,6 +326,7 @@ router.post("/stream", async (req, res) => {
       .set({ updatedAt: new Date(), provider, model })
       .where(eq(conversations.id, convId));
 
+    send({ type: "result", kind: "chat", data: full });
     send({ type: "done", usage: { inputTokens: inputT, outputTokens: outputT, costUsd: cost } });
     res.end();
   } catch (e) {

@@ -1,6 +1,6 @@
 "use client";
 
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -44,7 +44,7 @@ const markdownComponents: Components = {
     );
   },
   p({ children }) {
-    return <p className="mb-3 last:mb-0 leading-relaxed text-zinc-200">{children}</p>;
+    return <p className="mb-3 last:mb-0 text-base leading-6 text-zinc-200">{children}</p>;
   },
   a({ href, children }) {
     return (
@@ -65,7 +65,7 @@ const markdownComponents: Components = {
     return <ol className="mb-3 list-decimal space-y-1 pl-5 text-zinc-200">{children}</ol>;
   },
   li({ children }) {
-    return <li className="leading-relaxed">{children}</li>;
+    return <li className="leading-6">{children}</li>;
   },
   h1({ children }) {
     return <h1 className="mb-2 mt-4 text-lg font-semibold text-white first:mt-0">{children}</h1>;
@@ -85,15 +85,18 @@ const markdownComponents: Components = {
     return <hr className="my-4 border-surface-border" />;
   },
   img({ src, alt }) {
-    if (!src || typeof src !== "string") return null;
-    if (!src.startsWith("http") && !src.startsWith("https") && !src.startsWith("data:")) return null;
+    let u = typeof src === "string" ? src.trim() : "";
+    if (!u) return null;
+    if (u.startsWith("//")) u = `https:${u}`;
+    if (!u.startsWith("http") && !u.startsWith("https") && !u.startsWith("data:")) return null;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
+        src={u}
         alt={typeof alt === "string" ? alt : "Image"}
         className="my-2 max-h-[min(420px,70vh)] max-w-full rounded-lg border border-surface-border bg-black/20 object-contain shadow-md"
         loading="lazy"
+        referrerPolicy="no-referrer"
       />
     );
   },
@@ -118,10 +121,21 @@ const markdownComponents: Components = {
   },
 };
 
+/** react-markdown v10 strips `data:` by default — required for gpt-image-1 base64 responses. */
+function markdownUrlTransform(url: string) {
+  const trimmed = url.trim();
+  if (trimmed.startsWith("data:")) return trimmed;
+  return defaultUrlTransform(trimmed);
+}
+
 export function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="markdown-body max-w-none break-words text-[15px] leading-relaxed text-zinc-200">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
+    <div className="markdown-body max-w-none break-words text-base leading-6 text-zinc-200">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkBreaks]}
+        urlTransform={markdownUrlTransform}
+        components={markdownComponents}
+      >
         {content}
       </ReactMarkdown>
     </div>

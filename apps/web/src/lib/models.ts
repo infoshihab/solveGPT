@@ -2,7 +2,7 @@ export type ProviderId = "anthropic" | "openai" | "grok" | "gemini";
 
 export const PROVIDERS: { id: ProviderId; label: string; hint: string }[] = [
   { id: "anthropic", label: "Claude", hint: "Anthropic Messages API" },
-  { id: "openai", label: "ChatGPT", hint: "OpenAI Chat Completions" },
+  { id: "openai", label: "ChatGPT", hint: "OpenAI — say “make an image of…” to use DALL·E" },
   { id: "grok", label: "Grok", hint: "xAI (OpenAI-compatible)" },
   { id: "gemini", label: "Gemini", hint: "Google Generative AI" },
 ];

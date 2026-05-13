@@ -30,6 +30,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 export type StreamEvent =
   | { type: "meta"; conversationId: string; provider: string; model: string }
   | { type: "token"; text: string }
+  | { type: "result"; kind: "image" | "chat"; data: string }
   | {
       type: "done";
       usage: { inputTokens: number; outputTokens: number; costUsd: number };

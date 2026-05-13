@@ -193,16 +193,48 @@ export async function* streamGemini(
   yield { type: "usage", inputTokens, outputTokens };
 }
 
-/** DALL·E 3 — requires OpenAI API key (chat provider "openai"). */
-export async function generateOpenAIImage(apiKey: string, prompt: string): Promise<string> {
+export type GeneratedImageInfo = { dataUrlOrHttp: string; model: string };
+
+/**
+ * Images API — prefers gpt-image-1 (ChatGPT-class image gen), falls back to dall-e-3.
+ * Supports url or b64_json in the response.
+ */
+export async function generateOpenAIImage(
+  apiKey: string,
+  prompt: string
+): Promise<GeneratedImageInfo> {
   const client = new OpenAI({ apiKey });
-  const res = await client.images.generate({
-    model: "dall-e-3",
-    prompt: prompt.slice(0, 4000),
-    n: 1,
-    size: "1024x1024",
-  });
-  const url = res.data?.[0]?.url;
-  if (!url) throw new Error("OpenAI did not return an image URL");
-  return url;
+  const p = prompt.slice(0, 4000);
+  const models = ["gpt-image-1", "dall-e-3"] as const;
+  let lastErr: Error | null = null;
+
+  for (const imageModel of models) {
+    try {
+      const res = await client.images.generate({
+        model: imageModel,
+        prompt: p,
+        n: 1,
+        size: "1024x1024",
+        ...(imageModel === "dall-e-3" ? { response_format: "url" as const } : {}),
+      });
+      const row = res.data?.[0];
+      if (row?.url) {
+        return { dataUrlOrHttp: row.url, model: imageModel };
+      }
+      if (row?.b64_json) {
+        return {
+          dataUrlOrHttp: `data:image/png;base64,${row.b64_json}`,
+          model: imageModel,
+        };
+      }
+      throw new Error("OpenAI returned no image url or base64 data");
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+    }
+  }
+
+  const msg = lastErr?.message ?? "Image generation failed";
+  throw new Error(
+    `${msg} (tried gpt-image-1 and dall-e-3). Check API access, billing, and model availability.`
+  );
 }
