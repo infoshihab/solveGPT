@@ -14,7 +14,12 @@ type Conv = {
   updatedAt: string;
 };
 
-export function Sidebar() {
+type SidebarProps = {
+  mobileOpen: boolean;
+  onClose: () => void;
+};
+
+export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const [items, setItems] = useState<Conv[]>([]);
   const [q, setQ] = useState("");
   const conversationId = useChatStore((s) => s.conversationId);
@@ -52,15 +57,38 @@ export function Sidebar() {
         content: m.content,
       }))
     );
+    onClose();
   };
 
   return (
-    <aside className="flex w-full shrink-0 flex-col border-r border-surface-border bg-surface-raised/40 md:w-72">
+    <>
+      <div
+        className={`fixed inset-0 z-20 bg-black/50 transition md:hidden ${
+          mobileOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={onClose}
+        aria-hidden
+      />
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex w-80 max-w-[88vw] shrink-0 flex-col border-r border-surface-border bg-surface-raised/95 backdrop-blur transition-transform md:static md:z-0 md:w-72 md:max-w-none md:translate-x-0 md:bg-surface-raised/40 md:backdrop-blur-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Conversation history"
+      >
       <div className="border-b border-surface-border p-4">
         <Link href="/" className="inline-block py-0.5 opacity-90 transition hover:opacity-100" title="Home">
           <CompanyLogo heightClass="h-7" />
         </Link>
-        <p className="mt-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Conversations</p>
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Conversations</p>
+          <button
+            type="button"
+            className="rounded-lg border border-surface-border px-2 py-1 text-[11px] text-zinc-400 transition hover:text-zinc-200 md:hidden"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
       </div>
       <div className="border-b border-surface-border p-3">
         <button
@@ -68,6 +96,7 @@ export function Sidebar() {
           onClick={() => {
             resetChat();
             void load();
+            onClose();
           }}
           className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/20 transition hover:bg-blue-500"
         >
@@ -109,6 +138,7 @@ export function Sidebar() {
           ← Home
         </Link>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
