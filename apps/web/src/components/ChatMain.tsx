@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MODELS, PROVIDERS, type ProviderId } from "@/lib/models";
 import { apiFetch, getStoredToken, streamChat } from "@/lib/api";
 import { useChatStore, type ChatMessage } from "@/store/chatStore";
@@ -9,13 +9,13 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-2 text-xs text-zinc-500">
-      <span className="font-medium text-zinc-400">Assistant is typing</span>
-      <span className="flex gap-1">
+    <div className="flex items-center gap-2 px-1 py-0.5 text-xs text-zinc-500">
+      <span className="text-zinc-500">Thinking</span>
+      <span className="flex gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-zinc-400"
+            className="h-1 w-1 rounded-full bg-zinc-500"
             style={{
               animation: "typing-dot 1.2s ease-in-out infinite",
               animationDelay: `${i * 0.15}s`,
@@ -29,29 +29,30 @@ function TypingIndicator() {
 
 function UserBubble({ message }: { message: ChatMessage }) {
   return (
-    <div className="max-w-[min(760px,94%)] rounded-2xl border border-blue-500/25 bg-gradient-to-br from-blue-600/20 to-indigo-950/30 px-4 py-3 shadow-sm">
-      <div className="mb-2 border-b border-white/10 pb-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-200/80">You</span>
-      </div>
+    <div className="max-w-[min(680px,90%)] rounded-2xl border border-zinc-700/45 bg-zinc-800/35 px-4 py-2.5">
       {message.attachments && message.attachments.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-2.5 flex flex-wrap gap-2">
           {message.attachments.map((a) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={a.id}
               src={a.dataUrl}
               alt={a.name}
-              className="max-h-44 max-w-full rounded-xl border border-white/10 object-cover shadow-md"
+              className="max-h-40 max-w-full rounded-lg border border-zinc-600/40 object-cover"
             />
           ))}
         </div>
       )}
       {message.content.trim() ? (
-        <div className="text-sm leading-relaxed text-zinc-100">
+        /!\[[^\]]*\]\([^)]+\)/.test(message.content) ||
+        /^#{1,6}\s/m.test(message.content) ||
+        message.content.includes("```") ? (
           <MarkdownMessage content={message.content} />
-        </div>
+        ) : (
+          <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-zinc-100">{message.content}</p>
+        )
       ) : message.attachments?.length ? (
-        <p className="text-xs italic text-zinc-400">Attachment only</p>
+        <p className="text-xs text-zinc-500">Photo attached</p>
       ) : null}
     </div>
   );
@@ -83,6 +84,15 @@ export function ChatMain() {
   const [usage, setUsage] = useState<string | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollChatToBottom = useCallback(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, []);
 
   const modelOptions = useMemo(() => MODELS[provider], [provider]);
 
@@ -232,6 +242,10 @@ export function ChatMain() {
   const showTyping = streaming && last?.role === "user";
   const showEmptyState = messages.length === 0;
 
+  useEffect(() => {
+    scrollChatToBottom();
+  }, [messages, streaming, showTyping, scrollChatToBottom]);
+
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-surface">
       <header className="flex flex-wrap items-center gap-3 border-b border-surface-border bg-surface-raised/50 px-4 py-3 backdrop-blur-sm">
@@ -283,21 +297,16 @@ export function ChatMain() {
 
       <TemplatesPanel onInsert={(text) => setInput((prev) => (prev ? `${prev}\n\n${text}` : text))} />
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 md:px-6 md:py-8">
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 py-6 md:px-6 md:py-8">
         <div className="mx-auto w-full max-w-4xl space-y-5">
           {showEmptyState && (
-            <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/40 px-6 py-10 text-center">
-              <p className="text-sm font-medium text-zinc-300">Start a conversation</p>
-              <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                Type a message, attach images with <strong className="text-zinc-400">Attach</strong> (shown as
-                thumbnails — not dumped into the box). For generated art, use{" "}
-                <strong className="text-zinc-400">Create image</strong> (OpenAI DALL·E 3).
+            <div className="rounded-2xl border border-dashed border-surface-border bg-surface-raised/30 px-6 py-9 text-center">
+              <p className="text-sm font-medium text-zinc-300">New chat</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
+                Ask anything below. Add images from the toolbar; use image create only when you want DALL·E output.
               </p>
             </div>
           )}
-        {!showEmptyState && (
-          <p className="text-center text-[11px] font-medium uppercase tracking-wide text-zinc-600">Conversation</p>
-        )}
         {messages.map((m, i) => (
           <div
             key={`msg-${i}`}
@@ -307,22 +316,20 @@ export function ChatMain() {
               <UserBubble message={m} />
             ) : (
               <div
-                className={`max-w-[min(760px,94%)] rounded-2xl border px-4 py-3 shadow-sm ${
+                className={`max-w-[min(720px,100%)] rounded-2xl px-4 py-3 ${
                   m.role === "system"
-                    ? "border-amber-500/30 bg-amber-500/5 text-amber-100"
-                    : "border-surface-border bg-surface-raised text-zinc-100"
+                    ? "border border-amber-500/25 bg-amber-950/20 text-amber-50"
+                    : "border border-zinc-800/60 bg-zinc-900/25"
                 }`}
               >
-                <div className="mb-2 flex items-center gap-2 border-b border-white/5 pb-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                    {m.role === "assistant" ? "Assistant" : m.role}
-                  </span>
-                </div>
-                <div className="inline-block max-w-full">
+                {m.role === "system" && (
+                  <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-amber-200/70">System</p>
+                )}
+                <div className="max-w-full">
                   <MarkdownMessage content={m.content} />
                   {streaming && i === messages.length - 1 && m.role === "assistant" && (
                     <span
-                      className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-sm bg-accent align-text-bottom"
+                      className="ml-0.5 inline-block h-4 w-0.5 animate-pulse rounded-sm bg-zinc-400 align-text-bottom"
                       aria-hidden
                     />
                   )}
@@ -333,7 +340,7 @@ export function ChatMain() {
         ))}
         {showTyping && (
           <div className="flex justify-start">
-            <div className="rounded-2xl border border-surface-border bg-surface-raised px-4 py-3 shadow-sm">
+            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/25 px-4 py-2.5">
               <TypingIndicator />
             </div>
           </div>
@@ -345,21 +352,21 @@ export function ChatMain() {
         <div className="border-t border-red-500/25 bg-red-950/40 px-4 py-2.5 text-sm text-red-100">{error}</div>
       )}
 
-      <footer className="border-t border-surface-border bg-surface-raised/30 p-4 md:p-5">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
+      <footer className="border-t border-surface-border bg-surface px-4 py-3 md:px-6 md:py-4">
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-2.5">
           {pendingAttachments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {pendingAttachments.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-2 rounded-xl border border-surface-border bg-surface px-2 py-1 pr-1"
+                  className="flex items-center gap-2 rounded-lg border border-surface-border bg-surface-raised px-2 py-1.5 pr-1"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.dataUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                  <span className="max-w-[120px] truncate text-xs text-zinc-400">{a.name}</span>
+                  <img src={a.dataUrl} alt="" className="h-9 w-9 rounded-md object-cover" />
+                  <span className="max-w-[140px] truncate text-xs text-zinc-500">{a.name}</span>
                   <button
                     type="button"
-                    className="rounded-lg p-1 text-zinc-500 hover:bg-red-500/20 hover:text-red-300"
+                    className="rounded-md p-1 text-zinc-500 hover:bg-red-500/15 hover:text-red-300"
                     onClick={() => removePendingAttachment(a.id)}
                     aria-label="Remove attachment"
                   >
@@ -369,39 +376,17 @@ export function ChatMain() {
               ))}
             </div>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="rounded-lg border border-surface-border bg-surface px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Attach image
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                attachFile(e.target.files?.[0] ?? null);
-                e.currentTarget.value = "";
-              }}
-            />
-            <button
-              type="button"
-              disabled={busy || !input.trim()}
-              onClick={() => void generateImage()}
-              className="rounded-lg border border-violet-500/40 bg-violet-600/15 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-600/25 disabled:opacity-40"
-              title="Uses OpenAI DALL·E 3 (OpenAI API key required)"
-            >
-              {imageBusy ? "Creating image…" : "Create image (DALL·E)"}
-            </button>
-            <span className="text-[11px] text-zinc-600">
-              Press <span className="text-zinc-500">Enter</span> to send, <span className="text-zinc-500">Shift+Enter</span>{" "}
-              for a new line.
-            </span>
-          </div>
-          <div className="flex gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              attachFile(e.target.files?.[0] ?? null);
+              e.currentTarget.value = "";
+            }}
+          />
+          <div className="overflow-hidden rounded-2xl border border-surface-border bg-surface-raised shadow-sm">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -411,19 +396,53 @@ export function ChatMain() {
                   void send();
                 }
               }}
-              rows={3}
-              placeholder="Message… Shift+Enter for newline. Attach files above — they stay out of this box."
-              className="min-h-[96px] flex-1 resize-none rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm leading-relaxed text-zinc-100 placeholder:text-zinc-600 shadow-inner outline-none ring-1 ring-transparent transition focus:border-accent/50 focus:ring-accent/30"
+              rows={2}
+              placeholder="Message SolveGPT…"
+              className="min-h-[52px] max-h-40 w-full resize-y border-0 bg-transparent px-4 py-3 text-[15px] leading-relaxed text-zinc-100 placeholder:text-zinc-600 outline-none focus:ring-0 disabled:opacity-50"
               disabled={streaming}
+              aria-label="Message input"
             />
-            <button
-              type="button"
-              onClick={() => void send()}
-              disabled={streaming || (!input.trim() && !pendingAttachments.length)}
-              className="self-end shrink-0 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/20 transition hover:bg-blue-500 disabled:opacity-40"
-            >
-              {streaming ? "Sending…" : "Send"}
-            </button>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-border px-2 py-2 sm:px-3">
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-500 transition hover:bg-surface-hover hover:text-zinc-200"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach image"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                  <span className="hidden sm:inline">Add photos</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !input.trim()}
+                  onClick={() => void generateImage()}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-500 transition hover:bg-surface-hover hover:text-violet-200 disabled:opacity-40"
+                  title="OpenAI DALL·E 3 — requires API key"
+                  aria-label="Create image with DALL·E"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="M21 15l-5-5L5 21" />
+                  </svg>
+                  <span className="hidden sm:inline">{imageBusy ? "Creating…" : "Image"}</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="hidden text-[11px] text-zinc-600 sm:inline">Enter send · Shift+Enter new line</span>
+                <button
+                  type="button"
+                  onClick={() => void send()}
+                  disabled={streaming || (!input.trim() && !pendingAttachments.length)}
+                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-40"
+                >
+                  {streaming ? "…" : "Send"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

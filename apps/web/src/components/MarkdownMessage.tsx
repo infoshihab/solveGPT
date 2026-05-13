@@ -2,6 +2,7 @@
 
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
@@ -119,8 +120,8 @@ const markdownComponents: Components = {
 
 export function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="markdown-body max-w-none break-words">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+    <div className="markdown-body max-w-none break-words text-[15px] leading-relaxed text-zinc-200">
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
         {content}
       </ReactMarkdown>
     </div>

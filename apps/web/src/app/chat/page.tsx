@@ -22,7 +22,7 @@ export default function ChatPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-surface">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-accent" />
-        <p className="mt-4 text-sm text-zinc-500">Loading workspace…</p>
+        <p className="mt-4 text-sm text-zinc-500">Loading SolveGPT…</p>
       </div>
     );
   }
@@ -48,7 +48,7 @@ export default function ChatPage() {
           <Link href="/" className="flex shrink-0 items-center gap-3 py-0.5 transition hover:opacity-90">
             <CompanyLogo heightClass="h-8" />
             <div className="hidden border-l border-surface-border pl-3 sm:block">
-              <span className="text-xs font-medium text-zinc-400">Workspace</span>
+              <span className="text-xs font-medium text-zinc-400">SolveGPT</span>
             </div>
           </Link>
           <nav className="hidden items-center gap-1.5 md:flex">
@@ -87,7 +87,7 @@ export default function ChatPage() {
         <Sidebar mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1">
           <ChatMain />
-          </div>
+        </div>
       </div>
     </div>
   );

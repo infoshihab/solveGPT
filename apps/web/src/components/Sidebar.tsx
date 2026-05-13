@@ -22,6 +22,7 @@ type SidebarProps = {
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const [items, setItems] = useState<Conv[]>([]);
   const [q, setQ] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const conversationId = useChatStore((s) => s.conversationId);
   const resetChat = useChatStore((s) => s.resetChat);
   const setConversationId = useChatStore((s) => s.setConversationId);
@@ -58,6 +59,21 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       }))
     );
     onClose();
+  };
+
+  const deleteConversation = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
+    setDeletingId(id);
+    try {
+      const res = await apiFetch(`/api/chat/conversations/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      setItems((prev) => prev.filter((x) => x.id !== id));
+      if (conversationId === id) resetChat();
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -112,21 +128,47 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       </div>
       <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2 pb-6">
         {items.map((c) => (
-          <button
+          <div
             key={c.id}
-            type="button"
-            onClick={() => void openConversation(c.id)}
-            className={`mb-1 w-full rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+            className={`mb-1 flex items-stretch gap-1 rounded-xl border transition ${
               c.id === conversationId
-                ? "border-accent/40 bg-accent/10 text-white shadow-sm"
-                : "border-transparent text-zinc-400 hover:border-surface-border hover:bg-surface-hover hover:text-zinc-200"
+                ? "border-accent/40 bg-accent/10 shadow-sm"
+                : "border-transparent hover:border-surface-border hover:bg-surface-hover"
             }`}
           >
-            <div className="line-clamp-2 font-medium leading-snug">{c.title}</div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-zinc-600">
-              {c.provider} · {c.model}
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() => void openConversation(c.id)}
+              className={`min-w-0 flex-1 rounded-l-xl px-3 py-2.5 text-left text-sm transition ${
+                c.id === conversationId ? "text-white" : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <div className="line-clamp-2 font-medium leading-snug">{c.title}</div>
+              <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-zinc-600">
+                {c.provider} · {c.model}
+              </div>
+            </button>
+            <button
+              type="button"
+              disabled={deletingId === c.id}
+              onClick={(e) => void deleteConversation(e, c.id)}
+              className="flex shrink-0 items-center justify-center rounded-r-xl border-l border-surface-border/80 px-2.5 text-zinc-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:opacity-40"
+              aria-label={`Delete conversation: ${c.title}`}
+              title="Delete conversation"
+            >
+              {deletingId === c.id ? (
+                <span className="text-xs">…</span>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  <line x1="10" x2="10" y1="11" y2="17" />
+                  <line x1="14" x2="14" y1="11" y2="17" />
+                </svg>
+              )}
+            </button>
+          </div>
         ))}
         {items.length === 0 && <p className="px-2 py-6 text-center text-sm text-zinc-600">No history yet.</p>}
       </nav>
