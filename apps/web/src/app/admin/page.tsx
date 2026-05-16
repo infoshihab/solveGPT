@@ -29,10 +29,10 @@ function Card({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-surface-border bg-surface-raised/60 p-6 shadow-panel backdrop-blur-sm">
-      <h2 className="text-sm font-semibold tracking-tight text-white">{title}</h2>
-      {subtitle && <p className="mt-1 text-xs leading-relaxed text-zinc-500">{subtitle}</p>}
-      <div className="mt-5">{children}</div>
+    <section className="ui-card p-6 shadow-sm md:p-7">
+      <h2 className="text-base font-semibold tracking-tight text-white">{title}</h2>
+      {subtitle && <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{subtitle}</p>}
+      <div className="mt-6">{children}</div>
     </section>
   );
 }
@@ -158,30 +158,27 @@ export default function AdminPage() {
   if (loading || !user || user.role !== "admin") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-surface">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-accent" />
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-700 border-t-accent" />
         <p className="mt-4 text-sm text-zinc-500">Loading admin…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-surface px-4 py-10 text-sm text-zinc-200">
+    <div className="min-h-screen bg-surface px-4 py-10 text-sm text-zinc-200 md:px-6 md:py-12">
       <div className="mx-auto max-w-5xl space-y-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-surface-border pb-8">
+        <header className="ui-card flex flex-wrap items-center justify-between gap-4 p-5 md:p-6">
           <div className="flex flex-wrap items-center gap-4">
-            <Link href="/chat" className="shrink-0 py-1 transition hover:opacity-90">
-              <CompanyLogo heightClass="h-9" />
+            <Link href="/chat" className="shrink-0 rounded-lg py-1 transition hover:opacity-90">
+              <CompanyLogo heightClass="h-9 sm:h-10" />
             </Link>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Administration</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-white md:text-2xl">Administration</h1>
               <p className="mt-1 text-sm text-zinc-500">Users, usage, API keys, and model access.</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/chat"
-              className="rounded-xl border border-surface-border px-4 py-2 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
-            >
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Link href="/chat" className="ui-btn-secondary px-4 py-2 text-xs font-semibold">
               Back to chat
             </Link>
             <UserMenu />
@@ -189,7 +186,7 @@ export default function AdminPage() {
         </header>
 
         {err && (
-          <p className="rounded-xl border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-100">{err}</p>
+          <p className="rounded-xl border border-red-500/30 bg-red-950/35 px-4 py-3 text-sm text-red-100">{err}</p>
         )}
         {okMsg && (
           <p className="rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100">
@@ -211,7 +208,7 @@ export default function AdminPage() {
                     required
                     value={newUser.email}
                     onChange={(e) => setNewUser((u) => ({ ...u, email: e.target.value }))}
-                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+                    className="ui-field sm:col-span-2"
                     placeholder="colleague@company.com"
                   />
                 </label>
@@ -225,7 +222,7 @@ export default function AdminPage() {
                     minLength={4}
                     value={newUser.password}
                     onChange={(e) => setNewUser((u) => ({ ...u, password: e.target.value }))}
-                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+                    className="ui-field sm:col-span-2"
                     placeholder="Min. 4 characters"
                   />
                 </label>
@@ -234,7 +231,7 @@ export default function AdminPage() {
                   <select
                     value={newUser.role}
                     onChange={(e) => setNewUser((u) => ({ ...u, role: e.target.value as "admin" | "member" }))}
-                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none"
+                    className="ui-field w-full"
                   >
                     <option value="member">Member</option>
                     <option value="admin">Admin</option>
@@ -249,13 +246,13 @@ export default function AdminPage() {
                     min={1000}
                     value={newUser.tokenQuotaMonthly}
                     onChange={(e) => setNewUser((u) => ({ ...u, tokenQuotaMonthly: e.target.value }))}
-                    className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none"
+                    className="ui-field w-full"
                   />
                 </label>
                 <div className="sm:col-span-2">
                   <button
                     type="submit"
-                    className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition hover:bg-blue-500"
+                    className="ui-btn-primary px-5 py-2.5 text-sm"
                   >
                     Create user
                   </button>
@@ -271,7 +268,7 @@ export default function AdminPage() {
                 <select
                   value={keyForm.provider}
                   onChange={(e) => setKeyForm((k) => ({ ...k, provider: e.target.value as ProviderId }))}
-                  className="rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm"
+                  className="ui-field w-full max-w-[11rem] shrink-0 py-2.5 sm:w-auto"
                 >
                   {PROVIDERS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -284,12 +281,12 @@ export default function AdminPage() {
                   placeholder="Paste API key"
                   value={keyForm.apiKey}
                   onChange={(e) => setKeyForm((k) => ({ ...k, apiKey: e.target.value }))}
-                  className="min-w-[200px] flex-1 rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm"
+                  className="ui-field min-w-[200px] flex-1 py-2"
                 />
                 <button
                   type="button"
                   onClick={() => void saveKey()}
-                  className="rounded-xl bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-white"
+                  className="inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-500/50 bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-400 hover:bg-white"
                 >
                   Save key
                 </button>
@@ -321,7 +318,7 @@ export default function AdminPage() {
                         return (
                           <li
                             key={m.id}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-surface-border/80 bg-surface/50 px-2 py-1.5 text-xs"
+                            className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-2 py-1.5 text-xs"
                           >
                             <span className="text-zinc-300">{m.label}</span>
                             <label className="flex cursor-pointer items-center gap-2 text-zinc-500">
@@ -353,7 +350,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {data.summary.byProvider.map((r) => (
-                      <tr key={r.provider} className="border-t border-surface-border">
+                      <tr key={r.provider} className="border-t border-white/[0.06]">
                         <td className="py-2 font-mono text-zinc-300">{r.provider}</td>
                         <td>{r.tokens}</td>
                         <td>${r.cost.toFixed(4)}</td>
@@ -375,7 +372,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {data.summary.byUser.map((r) => (
-                      <tr key={r.id} className="border-t border-surface-border">
+                      <tr key={r.id} className="border-t border-white/[0.06]">
                         <td className="max-w-[140px] truncate py-2 text-zinc-300" title={r.email}>
                           {r.email}
                         </td>
@@ -402,7 +399,7 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {data.members.map((m) => (
-                      <tr key={m.id} className="border-t border-surface-border">
+                      <tr key={m.id} className="border-t border-white/[0.06]">
                         <td className="py-2.5 font-mono text-[11px] text-zinc-300">{m.email}</td>
                         <td>{m.role}</td>
                         <td>
@@ -429,12 +426,12 @@ export default function AdminPage() {
                 </table>
               </div>
               {memberPatch && (
-                <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-surface-border pt-6">
+                <div className="mt-6 flex flex-wrap items-end gap-3 border-t border-white/[0.06] pt-6">
                   <label className="text-xs text-zinc-500">
                     Monthly quota
                     <input
                       type="number"
-                      className="ml-2 rounded-lg border border-surface-border bg-surface px-2 py-1.5"
+                      className="ui-field ml-2 mt-1 inline-block w-40 py-2 text-xs"
                       value={memberPatch.tokenQuotaMonthly}
                       onChange={(e) =>
                         setMemberPatch((p) => (p ? { ...p, tokenQuotaMonthly: e.target.value } : p))
@@ -444,7 +441,7 @@ export default function AdminPage() {
                   <label className="text-xs text-zinc-500">
                     Role
                     <select
-                      className="ml-2 rounded-lg border border-surface-border bg-surface px-2 py-1.5"
+                      className="ui-field ml-2 mt-1 inline-block py-2 pl-2 pr-8 text-xs"
                       value={memberPatch.role}
                       onChange={(e) =>
                         setMemberPatch((p) => (p ? { ...p, role: e.target.value } : p))
@@ -457,14 +454,14 @@ export default function AdminPage() {
                   <button
                     type="button"
                     onClick={() => void saveMember()}
-                    className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+                    className="ui-btn-primary px-4 py-2 text-xs"
                   >
                     Save changes
                   </button>
                   <button
                     type="button"
                     onClick={() => setMemberPatch(null)}
-                    className="text-xs text-zinc-500 hover:text-white"
+                    className="text-xs font-medium text-zinc-500 hover:text-white"
                   >
                     Cancel
                   </button>

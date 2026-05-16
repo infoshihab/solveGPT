@@ -78,7 +78,7 @@ export function TemplatesPanel({ onInsert, embed }: Props) {
         <label className="sr-only" htmlFor="template-insert">
           Prompt template
         </label>
-        <div className="inline-flex min-h-9 w-full min-w-0 max-w-full items-stretch overflow-visible rounded-full border border-zinc-700/50 px-0.5 shadow-sm transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20 sm:inline-flex sm:max-w-[min(240px,40vw)]">
+        <div className="inline-flex min-h-9 w-full min-w-0 max-w-full items-stretch overflow-visible rounded-full border border-white/[0.1] bg-black/25 px-0.5 shadow-sm transition focus-within:border-accent/45 focus-within:ring-2 focus-within:ring-accent/15 sm:inline-flex sm:max-w-[min(240px,40vw)]">
           <select
             id="template-insert"
             value={pick}
@@ -113,17 +113,17 @@ export function TemplatesPanel({ onInsert, embed }: Props) {
         </div>
         {embedCreateOpen && (
           <div
-            className="absolute bottom-full left-0 z-40 mb-2 w-[min(100vw-2rem,320px)] overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900 shadow-panel ring-1 ring-white/[0.06]"
+            className="absolute bottom-full left-0 z-40 mb-2 w-[min(100vw-2rem,320px)] overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-950 shadow-float ring-1 ring-black/40"
             role="dialog"
             aria-label="Create prompt template"
           >
-            <div className="border-b border-zinc-800/80 bg-gradient-to-r from-zinc-800/30 to-transparent px-3 py-2">
+            <div className="border-b border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">New template</p>
+                <p className="text-xs font-semibold text-zinc-400">New template</p>
                 <button
                   type="button"
                   onClick={() => setEmbedCreateOpen(false)}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
                 >
                   Close
                 </button>
@@ -135,19 +135,19 @@ export function TemplatesPanel({ onInsert, embed }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Name"
-                className="mb-2 w-full rounded-lg border border-zinc-700/50 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/30"
+                className="ui-field mb-2 py-2"
               />
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Prompt text…"
                 rows={3}
-                className="w-full rounded-lg border border-zinc-700/50 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-blue-500/40 focus:ring-1 focus:ring-blue-500/30"
+                className="ui-field min-h-[5rem] resize-y"
               />
               <button
                 type="button"
                 onClick={() => void create()}
-                className="mt-3 w-full rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 py-2 text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.1)_inset] ring-1 ring-blue-400/20 transition hover:from-blue-400 hover:to-blue-500"
+                className="ui-btn-primary mt-3 w-full py-2.5"
               >
                 Save template
               </button>
@@ -159,28 +159,28 @@ export function TemplatesPanel({ onInsert, embed }: Props) {
   }
 
   return (
-    <div className="border-b border-surface-border bg-surface-raised/20 px-4 py-3">
+    <div className="border-b border-white/[0.06] bg-white/[0.02] px-4 py-3">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="text-xs font-semibold uppercase tracking-wide text-zinc-500 transition hover:text-zinc-300"
+        className="text-xs font-semibold text-zinc-500 transition hover:text-zinc-300"
       >
-        {open ? "▼ Hide prompt library" : "▶ Prompt templates"}
+        {open ? "Hide prompt library" : "Prompt library"}
       </button>
       {open && (
-        <div className="mt-4 grid gap-6 md:grid-cols-2">
+        <div className="mt-5 grid gap-8 md:grid-cols-2">
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">Saved prompts</p>
+            <p className="mb-2 text-xs font-medium text-zinc-500">Saved prompts</p>
             <ul className="max-h-44 space-y-1.5 overflow-y-auto scrollbar-thin pr-1">
               {items.map((t) => (
                 <li
                   key={t.id}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-sm"
                 >
                   <span className="truncate text-zinc-200">{t.name}</span>
                   <button
                     type="button"
-                    className="shrink-0 text-xs font-medium text-accent hover:underline"
+                    className="shrink-0 text-xs font-semibold text-accent hover:underline"
                     onClick={() => onInsert(t.content)}
                   >
                     Insert
@@ -190,24 +190,24 @@ export function TemplatesPanel({ onInsert, embed }: Props) {
             </ul>
           </div>
           <div>
-            <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zinc-500">Save new template</p>
+            <p className="mb-2 text-xs font-medium text-zinc-500">Save new template</p>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Name"
-              className="mb-2 w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+              className="ui-field mb-2"
             />
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Prompt text…"
               rows={3}
-              className="w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm outline-none ring-1 ring-transparent focus:ring-accent/25"
+              className="ui-field min-h-[5rem] resize-y"
             />
             <button
               type="button"
               onClick={() => void create()}
-              className="mt-2 rounded-lg border border-surface-border px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+              className="ui-btn-secondary mt-3 px-4 py-2 text-xs font-semibold"
             >
               Save template
             </button>

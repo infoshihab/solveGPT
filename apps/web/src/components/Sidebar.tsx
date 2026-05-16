@@ -77,29 +77,29 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   return (
     <>
       <div
-        className={`fixed inset-0 z-20 bg-black/50 transition md:hidden ${
+        className={`fixed inset-0 z-20 bg-black/60 backdrop-blur-[2px] transition md:hidden ${
           mobileOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={onClose}
         aria-hidden
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-80 max-w-[88vw] shrink-0 flex-col border-r border-surface-border bg-surface-raised/95 backdrop-blur transition-transform md:static md:z-0 md:w-72 md:max-w-none md:translate-x-0 md:bg-surface-raised/40 md:backdrop-blur-0 ${
+        className={`fixed inset-y-0 left-0 z-30 flex w-80 max-w-[88vw] shrink-0 flex-col border-r border-white/[0.06] bg-zinc-950/95 shadow-float backdrop-blur-xl transition-transform md:static md:z-0 md:w-72 md:max-w-none md:translate-x-0 md:bg-surface-raised/50 md:shadow-none md:backdrop-blur-none ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         aria-label="Conversation history"
       >
-        <div className="flex items-center justify-between border-b border-surface-border px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Conversations</p>
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+          <p className="text-sm font-semibold tracking-tight text-zinc-200">History</p>
           <button
             type="button"
-            className="rounded-lg border border-surface-border px-2 py-1 text-[11px] text-zinc-400 transition hover:text-zinc-200 md:hidden"
+            className="ui-btn-secondary px-2.5 py-1.5 text-xs md:hidden"
             onClick={onClose}
           >
             Close
           </button>
         </div>
-        <div className="border-b border-surface-border p-3">
+        <div className="space-y-2 border-b border-white/[0.06] p-4">
           <button
             type="button"
             onClick={() => {
@@ -107,7 +107,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               void load();
               onClose();
             }}
-            className="w-full rounded-xl bg-accent py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-900/20 transition hover:bg-blue-500"
+            className="ui-btn-primary w-full py-2.5"
           >
             New chat
           </button>
@@ -115,25 +115,25 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void load()}
-            placeholder="Search chats…"
-            className="mt-2 w-full rounded-xl border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200 outline-none ring-1 ring-transparent transition placeholder:text-zinc-600 focus:border-accent/30 focus:ring-accent/20"
+            placeholder="Search conversations…"
+            className="ui-field py-2 text-sm"
           />
         </div>
-        <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2 pb-4">
+        <nav className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-2 py-3 pb-6">
           {items.map((c) => (
             <div
               key={c.id}
-              className={`mb-1 flex items-stretch gap-1 rounded-xl border transition ${
+              className={`flex items-stretch gap-0 overflow-hidden rounded-lg border transition ${
                 c.id === conversationId
-                  ? "border-accent/40 bg-accent/10 shadow-sm"
-                  : "border-transparent hover:border-surface-border hover:bg-surface-hover"
+                  ? "border-accent/35 bg-accent/[0.09] ring-1 ring-inset ring-white/[0.04]"
+                  : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.03]"
               }`}
             >
               <button
                 type="button"
                 onClick={() => void openConversation(c.id)}
-                className={`min-w-0 flex-1 rounded-l-xl px-3 py-2.5 text-left text-sm transition ${
-                  c.id === conversationId ? "text-white" : "text-zinc-400 hover:text-zinc-200"
+                className={`min-w-0 flex-1 rounded-l-lg px-3 py-2.5 text-left text-sm transition ${
+                  c.id === conversationId ? "text-white" : "text-zinc-400 hover:text-zinc-100"
                 }`}
               >
                 <div className="line-clamp-2 font-medium leading-snug">{c.title}</div>
@@ -145,7 +145,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                 type="button"
                 disabled={deletingId === c.id}
                 onClick={(e) => void deleteConversation(e, c.id)}
-                className="flex shrink-0 items-center justify-center rounded-r-xl border-l border-surface-border/80 px-2.5 text-zinc-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:opacity-40"
+                className="flex shrink-0 items-center justify-center border-l border-white/[0.06] bg-transparent px-2.5 text-zinc-500 transition hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40"
                 aria-label={`Delete conversation: ${c.title}`}
                 title="Delete conversation"
               >
@@ -174,7 +174,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               </button>
             </div>
           ))}
-          {items.length === 0 && <p className="px-2 py-6 text-center text-sm text-zinc-600">No history yet.</p>}
+          {items.length === 0 && (
+            <p className="px-2 py-10 text-center text-sm leading-relaxed text-zinc-500">No conversations yet.</p>
+          )}
         </nav>
       </aside>
     </>

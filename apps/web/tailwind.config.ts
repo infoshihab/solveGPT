@@ -10,18 +10,23 @@ export default {
       },
       colors: {
         surface: {
-          DEFAULT: "#09090b",
-          raised: "#141418",
-          border: "#27272f",
-          hover: "#1c1c22",
+          DEFAULT: "#08080a",
+          raised: "#0e0e12",
+          border: "#26262e",
+          hover: "#16161c",
         },
         accent: {
-          DEFAULT: "#2563eb",
-          muted: "#1d4ed8",
+          DEFAULT: "#3b82f6",
+          muted: "#2563eb",
         },
       },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.25rem",
+      },
       boxShadow: {
-        panel: "0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.35)",
+        panel: "0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 40px rgba(0,0,0,0.45)",
+        float: "0 8px 30px rgba(0,0,0,0.35)",
       },
     },
   },

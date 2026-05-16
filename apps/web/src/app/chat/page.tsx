@@ -19,7 +19,7 @@ export default function ChatPage() {
   if (loading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-surface">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-600 border-t-accent" />
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-zinc-700 border-t-accent" />
         <p className="mt-4 text-sm text-zinc-500">Loading SolveGPT…</p>
       </div>
     );

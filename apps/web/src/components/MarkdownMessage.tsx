@@ -12,7 +12,7 @@ const codeBlockShell: CSSProperties = {
   margin: "0 0 0.75rem 0",
   borderRadius: "0.5rem",
   fontSize: "0.8125rem",
-  border: "1px solid rgb(39 39 42)",
+  border: "1px solid rgba(255,255,255,0.08)",
 };
 
 const markdownComponents: Components = {
@@ -38,19 +38,19 @@ const markdownComponents: Components = {
       );
     }
     return (
-      <code className="rounded-md bg-zinc-800/90 px-1.5 py-0.5 font-mono text-[0.8125rem] text-amber-100/95">
+      <code className="rounded-md border border-white/[0.08] bg-zinc-900/80 px-1.5 py-0.5 font-mono text-[0.8125rem] text-zinc-200">
         {children}
       </code>
     );
   },
   p({ children }) {
-    return <p className="mb-3 last:mb-0 text-base leading-6 text-zinc-200">{children}</p>;
+    return <p className="mb-3 last:mb-0 text-base leading-relaxed text-zinc-300">{children}</p>;
   },
   a({ href, children }) {
     return (
       <a
         href={href}
-        className="font-medium text-blue-400 underline decoration-blue-400/40 underline-offset-2 hover:text-blue-300"
+        className="font-medium text-accent underline decoration-accent/35 underline-offset-2 transition hover:text-blue-400"
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -59,10 +59,10 @@ const markdownComponents: Components = {
     );
   },
   ul({ children }) {
-    return <ul className="mb-3 list-disc space-y-1 pl-5 text-zinc-200">{children}</ul>;
+    return <ul className="mb-3 list-disc space-y-1 pl-5 text-zinc-300">{children}</ul>;
   },
   ol({ children }) {
-    return <ol className="mb-3 list-decimal space-y-1 pl-5 text-zinc-200">{children}</ol>;
+    return <ol className="mb-3 list-decimal space-y-1 pl-5 text-zinc-300">{children}</ol>;
   },
   li({ children }) {
     return <li className="leading-6">{children}</li>;
@@ -78,7 +78,7 @@ const markdownComponents: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="mb-3 border-l-2 border-zinc-500 pl-3 text-sm italic text-zinc-400">{children}</blockquote>
+      <blockquote className="mb-3 border-l-2 border-zinc-600 pl-3 text-sm italic text-zinc-500">{children}</blockquote>
     );
   },
   hr() {
@@ -94,7 +94,7 @@ const markdownComponents: Components = {
       <img
         src={u}
         alt={typeof alt === "string" ? alt : "Image"}
-        className="my-2 max-h-[min(420px,70vh)] max-w-full rounded-lg border border-surface-border bg-black/20 object-contain shadow-md"
+        className="my-2 max-h-[min(420px,70vh)] max-w-full rounded-lg border border-white/[0.08] bg-black/25 object-contain shadow-sm"
         loading="lazy"
         referrerPolicy="no-referrer"
       />
@@ -102,13 +102,13 @@ const markdownComponents: Components = {
   },
   table({ children }) {
     return (
-      <div className="mb-3 max-w-full overflow-x-auto rounded-lg border border-surface-border bg-black/20">
+      <div className="mb-3 max-w-full overflow-x-auto rounded-lg border border-white/[0.08] bg-black/20">
         <table className="min-w-full border-collapse text-left text-xs">{children}</table>
       </div>
     );
   },
   thead({ children }) {
-    return <thead className="bg-zinc-900/80 text-zinc-300">{children}</thead>;
+    return <thead className="bg-white/[0.04] text-zinc-400">{children}</thead>;
   },
   th({ children }) {
     return <th className="border-b border-surface-border px-3 py-2 font-medium">{children}</th>;
@@ -130,7 +130,7 @@ function markdownUrlTransform(url: string) {
 
 export function MarkdownMessage({ content }: { content: string }) {
   return (
-    <div className="markdown-body max-w-none break-words text-base leading-6 text-zinc-200">
+    <div className="markdown-body max-w-none break-words text-base leading-relaxed text-zinc-300">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         urlTransform={markdownUrlTransform}

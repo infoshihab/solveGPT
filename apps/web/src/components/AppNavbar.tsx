@@ -21,19 +21,19 @@ export function AppNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
   if (!user) return null;
 
   const linkBase =
-    "relative inline-flex items-center rounded-md px-3 py-2 font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "relative inline-flex items-center rounded-lg px-3 py-2 font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
-  const linkInactive = "text-zinc-400 hover:bg-surface-hover hover:text-zinc-100";
+  const linkInactive = "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100";
   const linkActive =
     "bg-white/[0.06] text-white ring-1 ring-inset ring-white/[0.06] shadow-[inset_0_-2px_0_0_theme(colors.accent.DEFAULT)]";
 
   return (
-    <header className="shrink-0 border-b border-surface-border bg-surface-raised/70 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-5 lg:px-6">
+    <header className="shrink-0 border-b border-white/[0.06] bg-zinc-950/80 shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+      <div className="mx-auto flex min-h-16 max-w-[1600px] items-center justify-between gap-4 px-4 py-2.5 sm:px-5 lg:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
           <button
             type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-surface-border text-zinc-300 transition hover:border-zinc-600 hover:bg-surface-hover hover:text-white md:hidden"
+            className="ui-btn-ghost h-9 w-9 shrink-0 md:hidden"
             aria-label="Open chat history"
             onClick={onOpenSidebar}
           >
@@ -42,26 +42,28 @@ export function AppNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
 
           <Link
             href="/chat"
-            className="flex shrink-0 items-center gap-3 rounded-md py-1 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex shrink-0 items-center gap-3 rounded-lg py-0.5 transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            <CompanyLogo heightClass="h-10 sm:h-12 rounded-lg" />
-            <div className="hidden h-7 w-px bg-surface-border sm:block" aria-hidden />
+            <CompanyLogo heightClass="h-10 sm:h-11 md:h-12" innerZoom={1.14} />
+            <div className="hidden h-10 w-px shrink-0 bg-white/[0.08] sm:block sm:h-11 md:h-12" aria-hidden />
             <div className="hidden min-w-0 flex-col sm:flex">
               <span className="truncate text-sm font-semibold tracking-tight text-white">SolveGPT</span>
               <span className="truncate text-[11px] font-medium text-zinc-500">Workspace</span>
             </div>
           </Link>
 
-          <nav className="ml-1 hidden items-center gap-0.5 border-l border-surface-border pl-4 text-sm md:flex" aria-label="Main">
-            <Link
-              href="/"
-              className={`${linkBase} ${pathname === "/" ? linkActive : linkInactive}`}
-            >
+          <nav
+            className="ml-1 hidden items-center gap-0.5 border-l border-white/[0.08] pl-4 md:flex"
+            aria-label="Main"
+          >
+            <Link href="/" className={`${linkBase} text-sm ${pathname === "/" ? linkActive : linkInactive}`}>
               Home
             </Link>
             <Link
               href="/chat"
-              className={`${linkBase} ${pathname === "/chat" || pathname.startsWith("/chat/") ? linkActive : linkInactive}`}
+              className={`${linkBase} text-sm ${
+                pathname === "/chat" || pathname.startsWith("/chat/") ? linkActive : linkInactive
+              }`}
               aria-current={pathname === "/chat" || pathname.startsWith("/chat/") ? "page" : undefined}
             >
               Chat
@@ -69,7 +71,9 @@ export function AppNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
             {user.role === "admin" && (
               <Link
                 href="/admin"
-                className={`${linkBase} ${pathname === "/admin" || pathname.startsWith("/admin/") ? linkActive : linkInactive}`}
+                className={`${linkBase} text-sm ${
+                  pathname === "/admin" || pathname.startsWith("/admin/") ? linkActive : linkInactive
+                }`}
                 aria-current={
                   pathname === "/admin" || pathname.startsWith("/admin/") ? "page" : undefined
                 }
@@ -81,11 +85,8 @@ export function AppNavbar({ onOpenSidebar }: { onOpenSidebar: () => void }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 md:hidden">
-            <Link
-              href="/"
-              className={`${linkBase} text-xs ${pathname === "/" ? linkActive : linkInactive}`}
-            >
+          <div className="flex items-center gap-1 md:hidden">
+            <Link href="/" className={`${linkBase} text-xs ${pathname === "/" ? linkActive : linkInactive}`}>
               Home
             </Link>
             <Link

@@ -15,7 +15,7 @@ body {
 }
 
 ::selection {
-  @apply bg-blue-500/30 text-white;
+  @apply bg-accent/25 text-white;
 }
 
 @keyframes typing-dot {
@@ -34,16 +34,36 @@ body {
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgb(63 63 70) transparent;
+    scrollbar-color: rgb(57 57 65) transparent;
   }
 }
 
-/* Native selects in composer — solid field + readable options (esp. Windows) */
+/* Shared UI — consistent surfaces, fields, and actions */
 @layer components {
+  .ui-card {
+    @apply rounded-xl border border-white/[0.07] bg-white/[0.025] shadow-sm backdrop-blur-sm;
+  }
+
+  .ui-field {
+    @apply w-full rounded-lg border border-surface-border bg-surface px-3 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20;
+  }
+
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .ui-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white;
+  }
+
+  .ui-btn-ghost {
+    @apply inline-flex items-center justify-center rounded-lg border border-transparent p-2 text-zinc-500 transition hover:border-white/[0.06] hover:bg-white/[0.04] hover:text-zinc-200;
+  }
+
   .composer-select {
     appearance: none;
     color: #fafafa;
-    background-color: #18181b;
+    background-color: #121214;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
@@ -54,12 +74,12 @@ body {
     color-scheme: dark;
   }
   .composer-select option {
-    background-color: #18181b;
+    background-color: #121214;
     color: #fafafa;
   }
   .composer-select option:disabled {
     color: #71717a;
-    background-color: #18181b;
+    background-color: #121214;
   }
   .composer-select:disabled {
     cursor: not-allowed;

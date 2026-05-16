@@ -13,11 +13,11 @@ export function UserMenu() {
   return (
     <div className="flex items-center gap-2 sm:gap-3">
       <div
-        className="hidden min-w-0 items-center gap-2.5 rounded-lg border border-surface-border bg-surface/80 py-1 pl-1 pr-3 sm:flex"
+        className="hidden min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.08] bg-white/[0.03] py-1 pl-1 pr-3 sm:flex"
         title={user.email}
       >
         <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-700/80 text-xs font-semibold text-zinc-100"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-xs font-semibold text-zinc-100 ring-1 ring-white/[0.06]"
           aria-hidden
         >
           {initialFromEmail(user.email)}
@@ -26,11 +26,7 @@ export function UserMenu() {
           {user.email}
         </span>
       </div>
-      <button
-        type="button"
-        onClick={logout}
-        className="rounded-md border border-surface-border bg-transparent px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:border-zinc-500 hover:bg-surface-hover hover:text-white"
-      >
+      <button type="button" onClick={logout} className="ui-btn-secondary px-3 py-2 text-xs font-semibold">
         Sign out
       </button>
     </div>

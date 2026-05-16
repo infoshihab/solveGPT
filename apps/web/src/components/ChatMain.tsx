@@ -11,7 +11,7 @@ import { wrapMarkdownImageUrl } from "@/lib/markdownImageUrl";
 function TypingIndicator() {
   return (
     <div className="flex items-center gap-2 text-sm text-zinc-500">
-      <span className="text-zinc-500">Thinking</span>
+      <span className="font-medium text-zinc-400">Thinking</span>
       <span className="flex gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
           <span
@@ -30,7 +30,7 @@ function TypingIndicator() {
 
 function UserBubble({ message }: { message: ChatMessage }) {
   return (
-    <div className="max-w-[min(42rem,92%)] rounded-xl border border-zinc-700/35 bg-zinc-800/55 px-4 py-2.5 shadow-sm">
+    <div className="max-w-[min(42rem,92%)] rounded-2xl border border-white/[0.08] bg-zinc-900/45 px-4 py-3 shadow-sm backdrop-blur-sm">
       {message.attachments && message.attachments.length > 0 && (
         <div className="mb-2.5 flex flex-wrap gap-2">
           {message.attachments.map((a) => (
@@ -39,7 +39,7 @@ function UserBubble({ message }: { message: ChatMessage }) {
               key={a.id}
               src={a.dataUrl}
               alt={a.name}
-              className="max-h-40 max-w-full rounded-lg border border-zinc-600/40 object-cover"
+              className="max-h-40 max-w-full rounded-lg border border-white/[0.08] object-cover"
             />
           ))}
         </div>
@@ -239,14 +239,17 @@ export function ChatMain() {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col bg-surface">
-      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
-        <div className="mx-auto w-full max-w-3xl space-y-4">
+      <div
+        ref={scrollAreaRef}
+        className="flex-1 overflow-y-auto bg-gradient-to-b from-white/[0.02] to-transparent px-4 py-6 md:px-8 md:py-8"
+      >
+        <div className="mx-auto w-full max-w-3xl space-y-5">
           {showEmptyState && (
-            <div className="rounded-xl border border-dashed border-zinc-700/50 bg-zinc-900/25 px-5 py-7 text-center">
-              <p className="text-sm font-medium text-zinc-300">Start a new thread</p>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-500">
-                Choose provider and model below, then type your message. With OpenAI, natural phrases like “create an
-                image of…” can trigger image generation.
+            <div className="ui-card border-dashed border-white/[0.1] px-6 py-10 text-center">
+              <p className="text-sm font-semibold text-zinc-200">Start a conversation</p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
+                Pick a provider and model, then write your message. On OpenAI, phrases like &quot;create an image
+                of…&quot; can request image generation.
               </p>
             </div>
           )}
@@ -259,14 +262,16 @@ export function ChatMain() {
                 <UserBubble message={m} />
               ) : (
                 <div
-                  className={`max-w-[min(42rem,100%)] rounded-xl px-4 py-3 shadow-sm ${
+                  className={`max-w-[min(42rem,100%)] rounded-2xl px-4 py-3 shadow-sm backdrop-blur-sm ${
                     m.role === "system"
-                      ? "border border-amber-500/30 bg-amber-950/25 text-amber-50"
-                      : "border border-zinc-800/60 bg-zinc-950/35"
+                      ? "border border-amber-500/35 bg-amber-950/30 text-amber-50"
+                      : "border border-white/[0.07] bg-white/[0.03]"
                   }`}
                 >
                   {m.role === "system" && (
-                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-amber-200/70">System</p>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">
+                      System
+                    </p>
                   )}
                   <div className="max-w-full">
                     <MarkdownMessage content={m.content} />
@@ -283,7 +288,7 @@ export function ChatMain() {
           ))}
           {showTyping && (
             <div className="flex justify-start">
-              <div className="max-w-[min(42rem,100%)] rounded-xl border border-zinc-800/60 bg-zinc-950/35 px-4 py-2.5 shadow-sm">
+              <div className="max-w-[min(42rem,100%)] rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 shadow-sm backdrop-blur-sm">
                 <TypingIndicator />
               </div>
             </div>
@@ -292,20 +297,26 @@ export function ChatMain() {
       </div>
 
       {error && (
-        <div className="border-t border-red-500/25 bg-red-950/40 px-4 py-2.5 text-sm text-red-100">{error}</div>
+        <div className="border-t border-red-500/25 bg-red-950/35 px-4 py-3 text-sm text-red-100 backdrop-blur-sm md:px-8">
+          {error}
+        </div>
       )}
 
-      <footer className="shrink-0 border-t border-zinc-800/60 bg-zinc-950/90 px-4 py-3 md:px-6 md:py-4">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
+      <footer className="shrink-0 border-t border-white/[0.06] bg-zinc-950/90 px-4 py-4 shadow-[0_-8px_32px_rgba(0,0,0,0.35)] backdrop-blur-xl md:px-8 md:py-5">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
           {pendingAttachments.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {pendingAttachments.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-2 rounded-lg border border-zinc-800/70 bg-zinc-900/60 px-2 py-1.5 pr-1"
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 pr-1"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.dataUrl} alt="" className="h-9 w-9 rounded-md object-cover ring-1 ring-zinc-800" />
+                  <img
+                    src={a.dataUrl}
+                    alt=""
+                    className="h-9 w-9 rounded-md object-cover ring-1 ring-white/[0.08]"
+                  />
                   <span className="max-w-[140px] truncate text-xs text-zinc-400">{a.name}</span>
                   <button
                     type="button"
@@ -330,11 +341,11 @@ export function ChatMain() {
             }}
           />
           {/* Composer: standard message field, then options strip (standard control heights) */}
-          <div className="overflow-visible rounded-xl border border-zinc-800/60 bg-zinc-900/75 shadow-md ring-1 ring-black/25">
+          <div className="ui-card overflow-visible shadow-float ring-1 ring-black/30">
             <label htmlFor="composer-message" className="sr-only">
               Message
             </label>
-            <div className="p-3 md:p-3.5">
+            <div className="p-3 md:p-4">
               <textarea
                 id="composer-message"
                 value={input}
@@ -347,15 +358,15 @@ export function ChatMain() {
                 }}
                 rows={3}
                 placeholder="Message"
-                className="max-h-[min(28vh,11rem)] min-h-[5.25rem] w-full resize-y rounded-lg border border-zinc-800/70 bg-zinc-950 px-3 py-2.5 text-sm leading-6 text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition duration-150 placeholder:text-zinc-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-45"
+                className="max-h-[min(28vh,11rem)] min-h-[5.25rem] w-full resize-y rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2.5 text-sm leading-6 text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition duration-150 placeholder:text-zinc-500 focus:border-accent/45 focus:ring-2 focus:ring-accent/15 disabled:opacity-45"
                 disabled={streaming}
                 aria-label="Message input"
               />
             </div>
 
-            <div className="border-t border-zinc-800/60 bg-zinc-950/40 px-3 py-2 md:px-3.5 md:py-2">
+            <div className="border-t border-white/[0.06] bg-black/20 px-3 py-2.5 md:px-4 md:py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex min-h-9 min-w-0 max-w-[min(128px,40vw)] shrink-0 items-center overflow-visible rounded-full border border-zinc-700/50 px-0.5 shadow-sm transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20">
+                <div className="inline-flex min-h-9 min-w-0 max-w-[min(128px,40vw)] shrink-0 items-center overflow-visible rounded-full border border-white/[0.1] bg-black/25 px-0.5 shadow-sm transition focus-within:border-accent/45 focus-within:ring-2 focus-within:ring-accent/15">
                   <label className="sr-only" htmlFor="composer-provider">
                     Provider
                   </label>
@@ -373,7 +384,7 @@ export function ChatMain() {
                     ))}
                   </select>
                 </div>
-                <div className="inline-flex min-h-9 min-w-0 max-w-[min(200px,52vw)] flex-1 items-center overflow-visible rounded-full border border-zinc-700/50 px-0.5 shadow-sm transition focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/20 sm:max-w-[min(240px,42%)]">
+                <div className="inline-flex min-h-9 min-w-0 max-w-[min(200px,52vw)] flex-1 items-center overflow-visible rounded-full border border-white/[0.1] bg-black/25 px-0.5 shadow-sm transition focus-within:border-accent/45 focus-within:ring-2 focus-within:ring-accent/15 sm:max-w-[min(240px,42%)]">
                   <label className="sr-only" htmlFor="composer-model">
                     Model
                   </label>
@@ -397,10 +408,10 @@ export function ChatMain() {
                     onInsert={(text) => setInput((prev) => (prev ? `${prev}\n\n${text}` : text))}
                   />
                 </div>
-                <div className="ml-auto flex shrink-0 items-center gap-0.5">
+                <div className="ml-auto flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-blue-500/40"
+                    className="ui-btn-ghost h-9 w-9 shrink-0 text-zinc-500 hover:text-zinc-200"
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="Attach image"
                     title="Attach images"
@@ -413,7 +424,7 @@ export function ChatMain() {
                     type="button"
                     disabled={busy || !input.trim()}
                     onClick={() => void generateImage()}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-800 hover:text-violet-300 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-violet-500/40 disabled:pointer-events-none disabled:opacity-35"
+                    className="ui-btn-ghost h-9 w-9 shrink-0 text-zinc-500 hover:text-violet-300 disabled:pointer-events-none disabled:opacity-35"
                     title="Generate image (OpenAI)"
                     aria-label="Generate image"
                   >
@@ -427,7 +438,7 @@ export function ChatMain() {
                     type="button"
                     onClick={() => void send()}
                     disabled={streaming || (!input.trim() && !pendingAttachments.length)}
-                    className="ml-1 h-9 min-w-[5.25rem] shrink-0 rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 px-4 text-sm font-semibold text-white shadow-sm ring-1 ring-blue-400/30 transition hover:from-blue-400 hover:to-blue-600 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+                    className="ml-1 inline-flex h-9 min-w-[5.25rem] shrink-0 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
                   >
                     {streaming ? "…" : "Send"}
                   </button>
@@ -436,12 +447,12 @@ export function ChatMain() {
               <div
                 className={
                   usage
-                    ? "mt-1.5 flex flex-wrap items-center gap-2 border-t border-zinc-800/40 pt-1.5 sm:border-0 sm:pt-0"
-                    : "mt-1.5 hidden flex-wrap items-center gap-2 sm:flex sm:justify-end"
+                    ? "mt-2 flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-2 sm:border-0 sm:pt-0"
+                    : "mt-2 hidden flex-wrap items-center gap-2 sm:flex sm:justify-end"
                 }
               >
                 {usage ? (
-                  <span className="min-w-0 max-w-[min(100%,20rem)] flex-1 truncate rounded-md border border-emerald-500/20 bg-emerald-950/30 px-2 py-1 text-[11px] font-medium leading-tight text-emerald-100/95">
+                  <span className="min-w-0 max-w-[min(100%,20rem)] flex-1 truncate rounded-lg border border-emerald-500/25 bg-emerald-950/25 px-2.5 py-1.5 text-[11px] font-medium leading-tight text-emerald-100/95">
                     {usage}
                   </span>
                 ) : null}
