@@ -97,6 +97,13 @@ export function ChatMain() {
 
   const modelOptions = useMemo(() => MODELS[provider], [provider]);
 
+  useEffect(() => {
+    if (!modelOptions.some((m) => m.id === model)) {
+      const fallback = modelOptions[0]?.id;
+      if (fallback) setModel(fallback);
+    }
+  }, [model, modelOptions, setModel]);
+
   const reloadConversation = useCallback(
     async (id: string) => {
       const res = await apiFetch(`/api/chat/conversations/${id}`);

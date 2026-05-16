@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ProviderId } from "@/lib/models";
+import { defaultModelForProvider, type ProviderId } from "@solvegpt/model-catalog";
 import { MODELS } from "@/lib/models";
 
 export type FileAttachment = { id: string; name: string; mime: string; dataUrl: string };
@@ -33,7 +33,7 @@ type State = {
 };
 
 const defaultProvider: ProviderId = "openai";
-const defaultModel = MODELS[defaultProvider][0]!.id;
+const defaultModel = defaultModelForProvider(defaultProvider);
 
 export const useChatStore = create<State>((set, get) => ({
   conversationId: null,
@@ -45,7 +45,7 @@ export const useChatStore = create<State>((set, get) => ({
   setProvider: (p) =>
     set({
       provider: p,
-      model: MODELS[p][0]?.id ?? defaultModel,
+      model: MODELS[p][0]?.id ?? defaultModelForProvider(p),
     }),
   setModel: (m) => set({ model: m }),
   setConversationId: (id) => set({ conversationId: id }),
@@ -86,6 +86,6 @@ export const useChatStore = create<State>((set, get) => ({
       messages: [],
       pendingAttachments: [],
       provider: defaultProvider,
-      model: MODELS[defaultProvider][0]!.id,
+      model: defaultModelForProvider(defaultProvider),
     }),
 }));

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { costEstimatePer1M } from "@solvegpt/model-catalog";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import type { ChatCompletionContentPart } from "openai/resources/chat/completions";
 
@@ -15,18 +16,8 @@ export type StreamChunk =
   | { type: "text"; text: string }
   | { type: "usage"; inputTokens: number; outputTokens: number };
 
-const roughCostPer1M: Record<string, { in: number; out: number }> = {
-  "gpt-4o": { in: 2.5, out: 10 },
-  "gpt-4o-mini": { in: 0.15, out: 0.6 },
-  "claude-3-5-sonnet-20241022": { in: 3, out: 15 },
-  "claude-3-5-haiku-20241022": { in: 0.8, out: 4 },
-  "grok-2-latest": { in: 2, out: 10 },
-  "gemini-1.5-pro": { in: 1.25, out: 5 },
-  "gemini-1.5-flash": { in: 0.075, out: 0.3 },
-};
-
 export function estimateCostUsd(model: string, input: number, output: number): number {
-  const p = roughCostPer1M[model] ?? { in: 1, out: 3 };
+  const p = costEstimatePer1M(model);
   return (input * p.in + output * p.out) / 1_000_000;
 }
 
@@ -51,7 +42,13 @@ export function mergeUserContentForDb(text: string, files?: IncomingAttachment[]
 function openAiSupportsVision(model: string): boolean {
   const m = model.toLowerCase();
   if (m.startsWith("gpt-3.5")) return false;
-  return m.includes("gpt-4") || m.includes("gpt-5") || m.includes("chatgpt") || m.includes("o4");
+  if (m.startsWith("o3") || m.startsWith("o4")) return true;
+  return (
+    m.includes("gpt-4") ||
+    m.includes("gpt-4.1") ||
+    m.includes("gpt-5") ||
+    m.includes("chatgpt")
+  );
 }
 
 function openAiImageParts(text: string, files: IncomingAttachment[]): ChatCompletionContentPart[] {
@@ -126,6 +123,11 @@ export async function* streamAnthropic(
   yield { type: "usage", inputTokens, outputTokens };
 }
 
+function isOpenAiReasoningModel(model: string): boolean {
+  const m = model.toLowerCase();
+  return m.startsWith("o1") || m.startsWith("o3") || m.startsWith("o4");
+}
+
 export async function* streamOpenAICompatible(
   apiKey: string,
   baseURL: string | undefined,
@@ -133,6 +135,7 @@ export async function* streamOpenAICompatible(
   messages: ChatMsg[]
 ): AsyncGenerator<StreamChunk> {
   const client = new OpenAI({ apiKey, baseURL });
+  const reasoning = isOpenAiReasoningModel(model);
   const stream = await client.chat.completions.create({
     model,
     messages: messages.map(
@@ -144,6 +147,7 @@ export async function* streamOpenAICompatible(
     ),
     stream: true,
     stream_options: { include_usage: true },
+    ...(reasoning ? { max_completion_tokens: 8192 } : { max_tokens: 4096 }),
   });
 
   let inputTokens = 0;

@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "clean:web": "node -e \"const fs=require('fs'),p=require('path');const t=p.join('apps','web','.next');fs.rmSync(t,{recursive:true,force:true});console.log('Removed',t);\"",

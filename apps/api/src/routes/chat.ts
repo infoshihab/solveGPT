@@ -28,6 +28,11 @@ import {
   buildDallePrompt,
   classifyIntentWithOpenAI,
 } from "../services/openaiImageIntent.js";
+import {
+  isKnownModel,
+  MODEL_CATALOG,
+  type ProviderId,
+} from "@solvegpt/model-catalog";
 
 const attachmentSchema = z.object({
   name: z.string().min(1).max(200),
@@ -35,18 +40,29 @@ const attachmentSchema = z.object({
   dataUrl: z.string().min(20).max(12_000_000),
 });
 
-const bodySchema = z.object({
-  conversationId: z.string().uuid().optional(),
-  provider: z.enum(["anthropic", "openai", "grok", "gemini"]),
-  model: z.string().min(1),
-  messages: z.array(
-    z.object({
-      role: z.enum(["user", "assistant", "system"]),
-      content: z.string(),
-    })
-  ),
-  attachments: z.array(attachmentSchema).max(8).optional(),
-});
+const bodySchema = z
+  .object({
+    conversationId: z.string().uuid().optional(),
+    provider: z.enum(["anthropic", "openai", "grok", "gemini"]),
+    model: z.string().min(1),
+    messages: z.array(
+      z.object({
+        role: z.enum(["user", "assistant", "system"]),
+        content: z.string(),
+      })
+    ),
+    attachments: z.array(attachmentSchema).max(8).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!isKnownModel(data.provider, data.model)) {
+      const allowed = MODEL_CATALOG[data.provider as ProviderId].map((m) => m.id).join(", ");
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["model"],
+        message: `Unknown model "${data.model}" for ${data.provider}. Choose one of: ${allowed}`,
+      });
+    }
+  });
 
 async function getProviderApiKey(provider: string): Promise<string | null> {
   const [row] = await db
@@ -331,7 +347,11 @@ router.post("/stream", async (req, res) => {
     res.end();
   } catch (e) {
     console.error("chat stream", e);
-    send({ type: "error", message: e instanceof Error ? e.message : "Stream failed" });
+    let message = e instanceof Error ? e.message : "Stream failed";
+    const errBody = e as { error?: { error?: { message?: string } } };
+    const apiMsg = errBody.error?.error?.message;
+    if (apiMsg) message = apiMsg;
+    send({ type: "error", message });
     res.end();
   }
 });

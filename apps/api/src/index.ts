@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { chatRouter } from "./routes/chat.js";
+import { modelsRouter } from "./routes/models.js";
 import { adminRouter } from "./routes/admin.js";
 import { templatesRouter } from "./routes/templates.js";
 import { authRouter } from "./routes/auth.js";
@@ -88,6 +89,7 @@ app.get("/api/me", requireAuth, async (req, res) => {
   });
 });
 
+app.use("/api/models", modelsRouter);
 app.use("/api/chat", chatRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/templates", templatesRouter);
