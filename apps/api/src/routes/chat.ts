@@ -13,6 +13,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { decryptSecret } from "../services/encryption.js";
 import {
   streamAnthropic,
+  streamOpenAI,
   streamOpenAICompatible,
   streamGemini,
   estimateCostUsd,
@@ -259,64 +260,81 @@ router.post("/stream", async (req, res) => {
   try {
     const lastPlain = lastUser?.content?.trim() ?? "";
     let streamIntent = detectStreamIntent(lastPlain);
-    if (provider === "openai" && lastPlain && process.env.OPENAI_ROUTE_IMAGE_LLM === "1") {
-      try {
-        streamIntent = await classifyIntentWithOpenAI(apiKey, lastPlain);
-      } catch {
-        /* keep rule-based intent */
+    // Optional LLM-based refinement (any provider — uses a dedicated OpenAI key)
+    if (lastPlain && process.env.OPENAI_ROUTE_IMAGE_LLM === "1") {
+      const intentKey =
+        provider === "openai" ? apiKey : await getProviderApiKey("openai");
+      if (intentKey) {
+        try {
+          streamIntent = await classifyIntentWithOpenAI(intentKey, lastPlain);
+        } catch {
+          /* keep rule-based intent */
+        }
       }
     }
-    if (
-      provider === "openai" &&
-      !attachments?.length &&
-      lastPlain &&
-      streamIntent === "image"
-    ) {
-      const extracted = extractImagePrompt(lastPlain);
-      const prompt = buildDallePrompt(extracted, lastPlain);
-      const { dataUrlOrHttp, model: imageModelUsed } = await generateOpenAIImage(apiKey, prompt);
-      send({ type: "result", kind: "image", data: dataUrlOrHttp });
-      full = `![Generated image](${wrapMarkdownImageUrlForStorage(dataUrlOrHttp)})`;
-      const imageCostUsd = 0.04;
-      const imageTokenProxy = 4000;
-      await logUsage(auth.userId, "openai", imageModelUsed, imageTokenProxy, 0, imageCostUsd);
-      await db.insert(messages).values({
-        conversationId: convId,
-        role: "assistant",
-        content: full,
-      });
-      await db
-        .update(conversations)
-        .set({ updatedAt: new Date(), provider, model })
-        .where(eq(conversations.id, convId));
-      send({
-        type: "done",
-        usage: {
-          inputTokens: imageTokenProxy,
-          outputTokens: 0,
-          costUsd: imageCostUsd,
-        },
-      });
-      res.end();
-      return;
+
+    // ── Image generation ──────────────────────────────────────────────────────
+    // Trigger for any provider: we always use the OpenAI Images API for generation.
+    // If the current provider IS OpenAI, reuse its key. Otherwise fetch the OpenAI key.
+    if (!attachments?.length && lastPlain && streamIntent === "image") {
+      const imageApiKey =
+        provider === "openai" ? apiKey : await getProviderApiKey("openai");
+
+      if (imageApiKey) {
+        const extracted = extractImagePrompt(lastPlain);
+        const prompt = buildDallePrompt(extracted, lastPlain);
+        const { dataUrlOrHttp, model: imageModelUsed } = await generateOpenAIImage(
+          imageApiKey,
+          prompt
+        );
+        send({ type: "result", kind: "image", data: dataUrlOrHttp });
+        full = `![Generated image](${wrapMarkdownImageUrlForStorage(dataUrlOrHttp)})`;
+        const imageCostUsd = 0.04;
+        const imageTokenProxy = 4000;
+        await logUsage(auth.userId, "openai", imageModelUsed, imageTokenProxy, 0, imageCostUsd);
+        await db.insert(messages).values({
+          conversationId: convId,
+          role: "assistant",
+          content: full,
+        });
+        await db
+          .update(conversations)
+          .set({ updatedAt: new Date(), provider, model })
+          .where(eq(conversations.id, convId));
+        send({
+          type: "done",
+          usage: { inputTokens: imageTokenProxy, outputTokens: 0, costUsd: imageCostUsd },
+        });
+        res.end();
+        return;
+      }
+      // No OpenAI key available — fall through to the chat stream so the AI
+      // can inform the user that image generation requires an OpenAI API key.
     }
 
-    const msgs = prepareMessagesForStream(chatMessages, attachments, provider, model);
+    // ── Chat stream ───────────────────────────────────────────────────────────
+    // • OpenAI   → Responses API (streamOpenAI) — handles vision + instructions natively
+    // • Grok     → Chat Completions API (streamOpenAICompatible) — image_url via prepareMessages
+    // • Anthropic → Anthropic Messages API (streamAnthropic) — vision blocks passed directly
+    // • Gemini   → Gemini API (streamGemini) — inlineData + systemInstruction passed directly
+    const msgs = prepareMessagesForStream(
+      chatMessages,
+      provider === "grok" ? attachments : undefined, // only Grok needs image_url embedding here
+      provider,
+      model
+    );
+
     let gen: AsyncGenerator<{ type: "text"; text: string } | { type: "usage"; inputTokens: number; outputTokens: number }>;
 
     if (provider === "anthropic") {
-      gen = streamAnthropic(apiKey, model, msgs);
+      gen = streamAnthropic(apiKey, model, msgs, attachments);
     } else if (provider === "openai") {
-      gen = streamOpenAICompatible(apiKey, undefined, model, msgs);
+      gen = streamOpenAI(apiKey, model, msgs, attachments);
     } else if (provider === "grok") {
       gen = streamOpenAICompatible(apiKey, "https://api.x.ai/v1", model, msgs);
     } else {
-      const geminiMsgs = msgs.map((m) =>
-        m.role === "system"
-          ? ({ role: "user" as const, content: `[System]\n${m.content}` } as ChatMsg)
-          : m
-      );
-      gen = streamGemini(apiKey, model, geminiMsgs);
+      // Gemini: system messages extracted + used as systemInstruction inside streamGemini
+      gen = streamGemini(apiKey, model, msgs, attachments);
     }
 
     for await (const chunk of gen) {

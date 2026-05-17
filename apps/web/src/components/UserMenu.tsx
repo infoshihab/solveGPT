@@ -2,33 +2,60 @@
 
 import { useSession } from "@/lib/session-context";
 
-function initialFromEmail(email: string) {
-  const c = email.trim().charAt(0);
-  return c ? c.toUpperCase() : "?";
+function getInitials(email: string): string {
+  const local = email.split("@")[0];
+  const parts = local.split(/[._\-+]/);
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return local.slice(0, 2).toUpperCase();
+}
+
+function SignOutIcon() {
+  return (
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+    </svg>
+  );
 }
 
 export function UserMenu() {
   const { user, logout } = useSession();
   if (!user) return null;
+
+  const initials = getInitials(user.email);
+
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
-      <div
-        className="hidden min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.08] bg-white/[0.03] py-1 pl-1 pr-3 sm:flex"
+    <div className="flex items-center gap-2">
+      {/* Email — large screens */}
+      <span
+        className="hidden max-w-[180px] truncate text-xs text-zinc-500 xl:block"
         title={user.email}
       >
-        <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-xs font-semibold text-zinc-100 ring-1 ring-white/[0.06]"
-          aria-hidden
-        >
-          {initialFromEmail(user.email)}
-        </span>
-        <span className="max-w-[180px] truncate text-left text-xs font-medium text-zinc-300 lg:max-w-[220px]">
-          {user.email}
-        </span>
-      </div>
-      <button type="button" onClick={logout} className="ui-btn-secondary px-3 py-2 text-xs font-semibold">
+        {user.email}
+      </span>
+
+      {/* Divider */}
+      <div className="hidden h-4 w-px bg-white/[0.1] xl:block" aria-hidden />
+
+      {/* Sign out — desktop */}
+      <button
+        type="button"
+        onClick={logout}
+        className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-zinc-200 sm:inline-flex"
+      >
+        <SignOutIcon />
         Sign out
       </button>
+
+      {/* Avatar — always visible, tapping signs out on mobile */}
+      <div
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white ring-1 ring-white/[0.12]"
+        title={user.email}
+        aria-hidden
+      >
+        {initials}
+      </div>
     </div>
   );
 }

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"d:\\\\solvetech\\\\solveGPT\" -Force)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\solvetech\\\\solveGPT\\\\apps\\\\web\\\\src\" -Recurse -Force | Where-Object {$_.PSIsContainer} | Select-Object FullName)",
+      "Bash(find d:\\\\\\\\solvetech\\\\\\\\solveGPT\\\\\\\\apps\\\\\\\\web\\\\\\\\src -type f -name \"*.tsx\" -o -name \"*.ts\")",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\solvetech\\\\solveGPT\\\\apps\\\\api\" -Recurse -Force | Where-Object {$_.Extension -eq \".ts\" -or $_.Extension -eq \".js\"} | Select-Object FullName | head -20)",
+      "Bash(Get-ChildItem -Path \"d:\\\\solvetech\\\\solveGPT\\\\apps\\\\api\\\\src\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

@@ -21,20 +21,20 @@ export function CompanyLogo({
   priority = false,
   innerZoom = 1,
 }: Props) {
-  const zoomed = innerZoom > 1.001;
+  const zoomed = innerZoom > 2.001;
 
   if (zoomed) {
     return (
       <span
-        className={`relative block overflow-hidden [aspect-ratio:240/64] ${heightClass} ${className}`.trim()}
+        className={`relative block h-full w-full overflow-hidden ${heightClass} ${className}`.trim()}
       >
         <Image
           src={COMPANY_LOGO_PATH}
           alt="SolveGPT"
           fill
           priority={priority}
-          sizes="200px"
-          className="object-contain object-left"
+          sizes="140px"
+          className="object-contain "
           style={{
             transform: `scale(${innerZoom})`,
             transformOrigin: "left center",
@@ -51,7 +51,7 @@ export function CompanyLogo({
       width={240}
       height={64}
       priority={priority}
-      className={`w-auto object-contain object-left ${heightClass} ${className}`.trim()}
+      className={`w-auto object-contain  ${heightClass} ${className}`.trim()}
     />
   );
 }

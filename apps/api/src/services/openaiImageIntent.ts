@@ -1,28 +1,27 @@
 /**
- * Smart middleware — Step 1: detect image vs chat for OpenAI routing.
- * Rule-based (fast) with optional LLM refine via OPENAI_ROUTE_IMAGE_LLM=1.
+ * Smart middleware — detect image-generation vs chat intent for routing.
+ * Rule-based (fast) with optional LLM refinement via OPENAI_ROUTE_IMAGE_LLM=1.
  */
 
 import OpenAI from "openai";
 
-const NEGATION = /\b(do not|don't|dont|never|avoid)\s+(generate|create|draw|make)\b/i;
+// ── Vocabulary ─────────────────────────────────────────────────────────────────
 
-/** Tighter patterns (fewer false positives). */
-const INTENT_PATTERNS: RegExp[] = [
-  /\b(generate|create|make|draw|render|paint)\s+(me\s+)?((a|an|the)\s+)?(image|picture|photo|illustration|artwork|drawing|pic)\b/i,
-  /\b(give|show)\s+me\s+((a|an|the)\s+)?(image|picture|photo|pic)\b/i,
-  /^draw\s+/im,
-  /\bdall-?e\b/i,
-  /\bgpt-?image\b/i,
-  /\bvisuali[sz]e\s+(as|this|the)\b/i,
-];
+/** Action verbs that signal the user wants something created. */
+const CREATE_VERBS =
+  /\b(generate|create|make|draw|render|paint|design|produce|build|show|give|illustrate|compose)\b/i;
+
+/** Visual content nouns — any of these alone with a create-verb signals image intent. */
+const VISUAL_NOUNS =
+  /\b(image|picture|photo|photograph|illustration|artwork|drawing|pic|poster|banner|logo|flyer|leaflet|thumbnail|infographic|avatar|wallpaper|background|meme|sticker|icon|graphic|mockup|cover|badge|card|cartoon|sketch|render|painting|portrait|landscape|scene|visualization|art|design)\b/i;
+
+/** Explicit negation — override everything. */
+const NEGATION = /\b(do not|don't|dont|never|avoid)\s+(generate|create|draw|make|design)\b/i;
+
+// ── Detection ──────────────────────────────────────────────────────────────────
 
 export type StreamIntent = "image" | "chat";
 
-/**
- * Beginner-friendly broad rules (user spec) + word boundaries where it matters.
- * "withdraw" must not match "draw" as a whole word — use \\bdraw\\b.
- */
 function detectIntentRuleBased(userText: string): StreamIntent {
   const t = userText.trim();
   if (!t) return "chat";
@@ -30,36 +29,20 @@ function detectIntentRuleBased(userText: string): StreamIntent {
 
   const lower = t.toLowerCase();
 
-  if (
-    lower.includes("create picture") ||
-    lower.includes("create an image") ||
-    lower.includes("create a image") ||
-    lower.includes("make a image") ||
-    lower.includes("make an image") ||
-    lower.includes("generate image") ||
-    lower.includes("generate an image") ||
-    lower.includes("generate a image")
-  ) {
-    return "image";
-  }
+  // Explicit DALL·E / GPT-Image mentions always mean image generation
+  if (/\bdall-?e\b/i.test(t) || /\bgpt-?image\b/i.test(t)) return "image";
 
-  if (/\bgenerate\b/.test(lower) && /\b(image|picture|photo|illustration|artwork|drawing)\b/.test(lower)) {
-    return "image";
-  }
+  // "draw X" at the very start of the message
+  if (/^draw\s+/im.test(t)) return "image";
 
-  if (/\bdraw\b/.test(lower) && (/\b(image|picture|photo|illustration|drawing)\b/.test(lower) || /^draw\s+/im.test(t))) {
-    return "image";
-  }
+  // Any create-verb + any visual noun → image
+  if (CREATE_VERBS.test(lower) && VISUAL_NOUNS.test(lower)) return "image";
 
-  if (
-    (/\bimage\b/.test(lower) || /\bpicture\b/.test(lower) || /\bphoto\b/.test(lower)) &&
-    /\b(make|create|generate|draw|render|paint|show|give|design|build)\b/i.test(lower) &&
-    /\b(of|for)\b/.test(lower)
-  ) {
-    return "image";
-  }
+  // Verb + "me" + visual noun (e.g. "show me a picture of…")
+  if (/\b(show|give)\s+me\s+(a|an|the)\s+/i.test(t) && VISUAL_NOUNS.test(lower)) return "image";
 
-  if (INTENT_PATTERNS.some((p) => p.test(t))) return "image";
+  // "visualize (as|this|the)" construction
+  if (/\bvisuali[sz]e\s+(as|this|the)\b/i.test(t)) return "image";
 
   return "chat";
 }
@@ -73,16 +56,18 @@ export function detectOpenAIImageIntent(userText: string): boolean {
   return detectStreamIntent(userText) === "image";
 }
 
-/** Strip common command phrases; fall back to full text if nothing remains. */
+// ── Prompt cleaning ────────────────────────────────────────────────────────────
+
+/** Strip leading command phrases; return whatever the user actually wants depicted. */
 export function extractImagePrompt(raw: string): string {
   let s = raw.trim().replace(/\s+/g, " ");
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     const before = s;
     s = s.replace(/^(please\s+|can you\s+|could you\s+)/i, "").trim();
-    s = s.replace(/^(i want (you )?to\s+|i'd like\s+)/i, "").trim();
+    s = s.replace(/^(i want (you )?to\s+|i'd like\s+|i need\s+)/i, "").trim();
     s = s
       .replace(
-        /^(generate|create|make|draw|render|paint|give|show)\s+(me\s+)?((a|an|the)\s+)?(image|picture|photo|illustration|artwork|drawing|pic)\s*(of|for|showing|:|,|-)?\s*/i,
+        /^(generate|create|make|draw|render|paint|design|produce|show|give|illustrate|compose)\s+(me\s+)?((a|an|the)\s+)?(image|picture|photo|photograph|illustration|artwork|drawing|pic|poster|banner|logo|flyer|leaflet|thumbnail|infographic|avatar|wallpaper|background|meme|sticker|icon|graphic|mockup|cover|badge|card|cartoon|sketch|render|painting|portrait|landscape|scene|visualization|art|design)\s*(of|for|about|showing|depicting|featuring|with|that shows|:|-|,)?\s*/i,
         ""
       )
       .trim();
@@ -92,23 +77,22 @@ export function extractImagePrompt(raw: string): string {
   return (s || raw.trim()).slice(0, 4000);
 }
 
-/** Short prompts: add safe illustrative framing for DALL·E / GPT Image. */
+/**
+ * Build the final prompt sent to the Images API.
+ * Pass the user's intent through cleanly — modern image models handle
+ * natural language prompts well without artificial framing.
+ */
 export function buildDallePrompt(extracted: string, originalUserText: string): string {
-  const base = (extracted.trim() || originalUserText.trim()).slice(0, 4000);
-  if (base.length < 20) {
-    return (
-      "Stylized flat illustration for a product mockup, fictional UI, no real logos or credentials: " +
-      base
-    ).slice(0, 4000);
-  }
-  return base;
+  return (extracted.trim() || originalUserText.trim()).slice(0, 4000);
 }
+
+// ── Optional LLM disambiguation ────────────────────────────────────────────────
 
 const INTENT_MODEL = process.env.OPENAI_INTENT_MODEL ?? "gpt-4o-mini";
 
 /**
- * Step 1b (optional): LLM disambiguation when OPENAI_ROUTE_IMAGE_LLM=1.
- * Reply must start with IMAGE or CHAT.
+ * LLM-based intent classification (optional, activated via OPENAI_ROUTE_IMAGE_LLM=1).
+ * Uses a dedicated OpenAI key so it works regardless of the current chat provider.
  */
 export async function classifyIntentWithOpenAI(
   apiKey: string,
@@ -122,8 +106,8 @@ export async function classifyIntentWithOpenAI(
         role: "system",
         content: `You route user messages for a product that can either (A) generate a new image with an image API, or (B) answer with normal chat text.
 Reply with exactly one word:
-- IMAGE — user wants to generate, draw, create, render, illustrate, or visualize a new image/art/picture/photo (including "make an image of…", DALL·E, GPT image).
-- CHAT — questions, coding, explanations, analysis, or talking about images without requesting new generation.
+- IMAGE — user wants to generate, draw, create, render, illustrate, design, or visualize a new image / art / picture / poster / banner / logo / flyer / thumbnail / graphic.
+- CHAT — questions, coding, analysis, editing existing images without requesting new generation.
 
 No punctuation or other words.`,
       },
@@ -133,6 +117,5 @@ No punctuation or other words.`,
     temperature: 0,
   });
   const out = res.choices[0]?.message?.content?.trim().toUpperCase() ?? "CHAT";
-  if (out.startsWith("IMAGE")) return "image";
-  return "chat";
+  return out.startsWith("IMAGE") ? "image" : "chat";
 }

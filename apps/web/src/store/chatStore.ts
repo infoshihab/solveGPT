@@ -8,6 +8,10 @@ export type ChatMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   attachments?: FileAttachment[];
+  /** Which provider generated this response (assistant messages only) */
+  provider?: ProviderId;
+  /** Which model generated this response (assistant messages only) */
+  model?: string;
 };
 
 type State = {
@@ -21,10 +25,10 @@ type State = {
   setModel: (m: string) => void;
   setConversationId: (id: string | null) => void;
   setMessages: (m: ChatMessage[]) => void;
-  appendAssistantChunk: (t: string) => void;
+  appendAssistantChunk: (t: string, provider?: ProviderId, model?: string) => void;
   finalizeAssistant: () => void;
   addUserMessage: (content: string, attachments?: FileAttachment[]) => void;
-  addAssistantMessage: (content: string) => void;
+  addAssistantMessage: (content: string, provider?: ProviderId, model?: string) => void;
   addPendingAttachment: (a: FileAttachment) => void;
   removePendingAttachment: (id: string) => void;
   clearPendingAttachments: () => void;
@@ -50,13 +54,13 @@ export const useChatStore = create<State>((set, get) => ({
   setModel: (m) => set({ model: m }),
   setConversationId: (id) => set({ conversationId: id }),
   setMessages: (messages) => set({ messages }),
-  appendAssistantChunk: (t) => {
+  appendAssistantChunk: (t, provider, model) => {
     const msgs = [...get().messages];
     const last = msgs[msgs.length - 1];
     if (last?.role === "assistant") {
       last.content += t;
     } else {
-      msgs.push({ role: "assistant", content: t });
+      msgs.push({ role: "assistant", content: t, provider, model });
     }
     set({ messages: msgs });
   },
@@ -72,8 +76,8 @@ export const useChatStore = create<State>((set, get) => ({
         },
       ],
     })),
-  addAssistantMessage: (content) =>
-    set((s) => ({ messages: [...s.messages, { role: "assistant", content }] })),
+  addAssistantMessage: (content, provider, model) =>
+    set((s) => ({ messages: [...s.messages, { role: "assistant", content, provider, model }] })),
   addPendingAttachment: (a) =>
     set((s) => ({ pendingAttachments: [...s.pendingAttachments, a] })),
   removePendingAttachment: (id) =>
